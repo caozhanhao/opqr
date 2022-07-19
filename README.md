@@ -19,3 +19,5 @@ cmake .. && make
 ## 注意事项
 - Kanji Mode目前可能存在Bug
 - 目前生成图片仅支持ppm格式
+## 原理
+[二维码生成原理](https://zhuanlan.zhihu.com/p/543574464)
