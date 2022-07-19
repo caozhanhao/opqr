@@ -29,7 +29,7 @@ namespace op::pic
           }
           fs << ir << " " << ig << " " << ib << "\n";
         }
-        std::cout << "\n";
+        fs << "\n";
       }
       fs.close();
     }
