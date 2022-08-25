@@ -1,4 +1,18 @@
-#pragma once
+//   Copyright 2022 opqr - caozhanhao
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+#ifndef OPQR_OPTABLES_H
+#define OPQR_OPTABLES_H
 #include "oppos.h"
 #include <vector>
 //https://files-cdn.cnblogs.com/files/elaron/qr_code.pdf
@@ -12,8 +26,8 @@ namespace op::tables
     int ndatawords;//k = number of encoded_data codewords
     int nec;//r = number of error correction capacity
   } ECBGroup;//error correction block group
-
-
+  
+  
   typedef struct
   {
     int ndatawords;
@@ -21,7 +35,7 @@ namespace op::tables
     int necb_group;//number of the group in the array below
     ECBGroup ecb_group[2]; //error correction block
   } ECLevel;
-
+  
   typedef struct
   {
     int version;
@@ -281,7 +295,7 @@ namespace op::tables
               {1276, {3057, 1852, 1273, 784}, 2, {{20, 45, 15, 15}, {61, 46, 16, 15}}}},
           7, {6, 30, 58, 86, 114, 142, 170}}
   };
-
+  
   const unsigned char exp_to_fac[256] = {
       1, 2, 4, 8, 16, 32, 64, 128, 29, 58, 116, 232, 205, 135, 19, 38,
       76, 152, 45, 90, 180, 117, 234, 201, 143, 3, 6, 12, 24, 48, 96, 192,
@@ -300,7 +314,7 @@ namespace op::tables
       18, 36, 72, 144, 61, 122, 244, 245, 247, 243, 251, 235, 203, 139, 11, 22,
       44, 88, 176, 125, 250, 233, 207, 131, 27, 54, 108, 216, 173, 71, 142, 1
   };
-
+  
   const unsigned char fac_to_exp[256] = {
       0, 0, 1, 25, 2, 50, 26, 198, 3, 223, 51, 238, 27, 104, 199, 75,
       4, 100, 224, 14, 52, 141, 239, 129, 28, 193, 105, 248, 200, 8, 76, 113,
@@ -319,7 +333,7 @@ namespace op::tables
       203, 89, 95, 176, 156, 169, 160, 81, 11, 245, 22, 235, 122, 117, 44, 215,
       79, 174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168, 80, 88, 175
   };
-
+  
   const unsigned char generator[69][68] = {
       {0},
       {0},
@@ -391,7 +405,7 @@ namespace op::tables
       {0},
       {247, 159, 223, 33,  224, 93,  77,  70,  90,  160, 32,  254, 43,  150, 84,  101, 190, 205, 133, 52,  60,  202, 165, 220, 203, 151, 93,  84,  15,  84,  253, 173, 160, 89,  227, 52,  199, 97,  95,  231, 52,  177, 41,  125, 137, 241, 166, 225, 118, 2,   54,  32,  82,  215, 175, 198, 43,  238, 235, 27,  101, 184, 127, 3,  5,  8, 163, 238}
   };
-
+  
   const std::vector<pos::Pos> position_detection_pattern_pos{
       {0, 0},
       {1, 0},
@@ -427,17 +441,17 @@ namespace op::tables
       {3, 4},
       {4, 4}
   };
-
+  
   const long VersionInfo[41] =
-  {
-      -1L, -1L, -1L, -1L, -1L, -1L,
-      -1L, 0x07c94L, 0x085bcL, 0x09a99L, 0x0a4d3L, 0x0bbf6L,
-      0x0c762L, 0x0d847L, 0x0e60dL, 0x0f928L, 0x10b78L, 0x1145dL,
-      0x12a17L, 0x13532L, 0x149a6L, 0x15683L, 0x168c9L, 0x177ecL,
-      0x18ec4L, 0x191e1L, 0x1afabL, 0x1b08eL, 0x1cc1aL, 0x1d33fL,
-      0x1ed75L, 0x1f250L, 0x209d5L, 0x216f0L, 0x228baL, 0x2379fL,
-      0x24b0bL, 0x2542eL, 0x26a64L, 0x27541L, 0x28c69L
-  };
+      {
+          -1L, -1L, -1L, -1L, -1L, -1L,
+          -1L, 0x07c94L, 0x085bcL, 0x09a99L, 0x0a4d3L, 0x0bbf6L,
+          0x0c762L, 0x0d847L, 0x0e60dL, 0x0f928L, 0x10b78L, 0x1145dL,
+          0x12a17L, 0x13532L, 0x149a6L, 0x15683L, 0x168c9L, 0x177ecL,
+          0x18ec4L, 0x191e1L, 0x1afabL, 0x1b08eL, 0x1cc1aL, 0x1d33fL,
+          0x1ed75L, 0x1f250L, 0x209d5L, 0x216f0L, 0x228baL, 0x2379fL,
+          0x24b0bL, 0x2542eL, 0x26a64L, 0x27541L, 0x28c69L
+      };
   const signed char alnum[256] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -457,3 +471,4 @@ namespace op::tables
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
   };
 }
+#endif

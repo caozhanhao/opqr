@@ -1,4 +1,18 @@
-#pragma once
+//   Copyright 2022 opqr - caozhanhao
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+#ifndef OPQR_OPQR_H
+#define OPQR_OPQR_H
 #include <vector>
 #include <bitset>
 #include <charconv>
@@ -68,6 +82,7 @@ namespace op::qr
     KANJI,
     EMPTY
   };
+  
   void bin_to_dec(const std::vector<bool>::const_iterator first, const std::vector<bool>::const_iterator last,
                   std::vector<unsigned char> &dest)
   {
@@ -91,29 +106,35 @@ namespace op::qr
         dest.emplace_back(bits[7 - j]);
     }
   }
+  
   template<std::size_t S>
-  void add_bits(std::vector<bool>& v, int a)
+  void add_bits(std::vector<bool> &v, int a)
   {
     std::bitset<S> bits(a);
     for (int i = S - 1; i >= 0; --i)
       v.emplace_back(bits[i]);
   }
+  
   ECLevel to_ecl(std::size_t l)
   {
     return static_cast<ECLevel>(l);
   }
+  
   Mode to_mode(std::size_t l)
   {
     return static_cast<Mode>(l);
   }
+  
   std::size_t to_sz(ECLevel l)
   {
     return static_cast<std::size_t>(l);
   }
+  
   std::size_t to_sz(Mode l)
   {
     return static_cast<std::size_t>(l);
   }
+  
   class QR
   {
   private:
@@ -129,36 +150,41 @@ namespace op::qr
     pos::PosSet function_patterns;
     int mask;
   public:
-    QR(int version_, ECLevel level_,  Mode mode_ = Mode::BIT8, int mask_ = -1)
+    QR(int version_, ECLevel level_, Mode mode_ = Mode::BIT8, int mask_ = -1)
         : version(version_), level(level_), mode(mode_), mask(mask_)
     {
       if (version_ > 40 || version_ < 1)
         throw error::Error(OP_ERROR_LOCATION, __func__, "Version is range from 1 to 40.");
     }
-    QR(): version(-1), mask(-1), mode(Mode::BIT8)
-    {}
     
-    void add_data(const std::string& data)
+    QR() : version(-1), mask(-1), mode(Mode::BIT8) {}
+    
+    void add_data(const std::string &data)
     {
       raw = data;
       init();
     }
+    
     void set_mode(Mode mode_)
     {
       mode = mode_;
     }
+    
     void set_mask(int m)
     {
       mask = m;
     }
+    
     void set_version(int v)
     {
       version = v;
     }
+    
     void set_level(ECLevel l)
     {
       level = l;
     }
+    
     pic::Pic generate()
     {
       data_encode();
@@ -170,11 +196,12 @@ namespace op::qr
       fill_format_infomation();
       return pic::Pic(final_qr);
     }
+  
   private:
     void select_qr()
     {
       int l;
-      for (l = 3; l >=  0; --l)
+      for (l = 3; l >= 0; --l)
       {
         version = 1;
         while (version < 41 && tables::QRTable[version].level[l].capacity[to_sz(mode)] < raw.size())
@@ -191,29 +218,31 @@ namespace op::qr
       }
       level = to_ecl(l);
     }
+    
     void data_encode()
     {
       switch (mode)
       {
-      case Mode::NUM:
-        num_encode();
-        break;
-      case Mode::ALNUM:
-        alnum_encode();
-        break;
-      case Mode::BIT8:
-        bit8_encode();
-        break;
-      case Mode::KANJI:
-        kanji_encode();
-        break;
+        case Mode::NUM:
+          num_encode();
+          break;
+        case Mode::ALNUM:
+          alnum_encode();
+          break;
+        case Mode::BIT8:
+          bit8_encode();
+          break;
+        case Mode::KANJI:
+          kanji_encode();
+          break;
       }
     }
+    
     void init()
     {
       if (version < 0)
         select_qr();
-      else if(tables::QRTable[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
+      else if (tables::QRTable[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
         throw error::Error(OP_ERROR_LOCATION, __func__, "The data is too big.");
       encoded_data.clear();
     }
@@ -238,7 +267,8 @@ namespace op::qr
         {
           padding_bytes.insert(padding_bytes.end(), {1, 1, 1, 0, 1, 1, 0, 0});
           flag = false;
-        } else
+        }
+        else
         {
           padding_bytes.insert(padding_bytes.end(), {0, 0, 0, 1, 0, 0, 0, 1});
           flag = true;
@@ -272,11 +302,13 @@ namespace op::qr
         {
           add_bits<7>(v, (raw[i] - '0') * 10 + (raw[i + 1] - '0'));
           break;
-        } else if (i + 1 == raw.size())
+        }
+        else if (i + 1 == raw.size())
         {
           add_bits<4>(v, (raw[i] - '0'));
           break;
-        } else
+        }
+        else
         {
           add_bits<10>(v, (raw[i] - '0') * 100 + (raw[i + 1] - '0') * 10 + (raw[i + 2] - '0'));
         }
@@ -304,7 +336,7 @@ namespace op::qr
           break;
       }
       
-      for (auto i = 0; i < raw.size();i += 2)
+      for (auto i = 0; i < raw.size(); i += 2)
       {
         if (i + 1 == raw.size())
         {
@@ -313,7 +345,8 @@ namespace op::qr
             throw error::Error(OP_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
           add_bits<11>(v, w);
           break;
-        } else
+        }
+        else
         {
           auto w1 = tables::alnum[raw[i]];
           auto w2 = tables::alnum[raw[i + 1]];
@@ -325,45 +358,47 @@ namespace op::qr
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
+    
     void bit8_encode()
     {
-      std::vector<bool> v = { 0,1,0,0 };
+      std::vector<bool> v = {0, 1, 0, 0};
       //Character Count Indicator
       int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-      case 8:
-        add_bits<8>(v, raw.size());
-        break;
-      case 16:
-        add_bits<16>(v, raw.size());
-        break;
+        case 8:
+          add_bits<8>(v, raw.size());
+          break;
+        case 16:
+          add_bits<16>(v, raw.size());
+          break;
       }
-      for (auto i = 0; i < raw.size();i++)
+      for (auto i = 0; i < raw.size(); i++)
         add_bits<8>(v, raw[i]);
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
+    
     void kanji_encode()
     {
-      std::vector<bool> v = { 1,0,0,0 };
+      std::vector<bool> v = {1, 0, 0, 0};
       //Character Count Indicator
       int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-      case 8:
-        add_bits<8>(v, raw.size() / 2);
-        break;
-      case 10:
-        add_bits<10>(v, raw.size() / 2);
-        break;
-      case 12:
-        add_bits<12>(v, raw.size() / 2);
-        break;
+        case 8:
+          add_bits<8>(v, raw.size() / 2);
+          break;
+        case 10:
+          add_bits<10>(v, raw.size() / 2);
+          break;
+        case 12:
+          add_bits<12>(v, raw.size() / 2);
+          break;
       }
       for (int i = 0; i < raw.size(); i += 2)
       {
-        unsigned int jis = ((unsigned int)raw[i] << 8) | raw[i + 1];
+        unsigned int jis = ((unsigned int) raw[i] << 8) | raw[i + 1];
         if (jis >= 0x8140 && jis <= 0x9ffc)
         {
           jis -= 0x8140;
@@ -404,6 +439,7 @@ namespace op::qr
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
+    
     void generate_ECBlock()
     {
       ////test
@@ -497,7 +533,7 @@ namespace op::qr
     {
       const std::size_t dimension = tables::QRTable[version].dimension;
       filled.resize(dimension);
-      for (auto &r:filled)
+      for (auto &r: filled)
         r.resize(dimension);
       
       //Position Detection Pattern
@@ -607,7 +643,7 @@ namespace op::qr
       //Remainder Bits
       final_databits.insert(final_databits.end(), tables::QRTable[version].remainder_bits, 0);
       
-      for (auto b:final_databits)
+      for (auto b: final_databits)
       {
         filled[pos.x][pos.y] = b;
         next();
@@ -630,13 +666,13 @@ namespace op::qr
           if (function_patterns.has_pos(true_pos))
             continue;
           if ((type == 0 && (i + j) % 2 == 0) ||
-            (type == 1 && i % 2 == 0) ||
-            (type == 2 && j % 3 == 0) ||
-            (type == 3 && (i + j) % 3 == 0) ||
-            (type == 4 && ((i / 2) + (j / 3)) % 2 == 0) ||
-            (type == 5 && (i * j) % 2 + (i * j) % 3 == 0) ||
-            (type == 6 && ((i * j) % 2 + (i * j) % 3) % 2 == 0) ||
-            (type == 7 && ((i * j) % 3 + (i + j) % 2) % 2 == 0))
+              (type == 1 && i % 2 == 0) ||
+              (type == 2 && j % 3 == 0) ||
+              (type == 3 && (i + j) % 3 == 0) ||
+              (type == 4 && ((i / 2) + (j / 3)) % 2 == 0) ||
+              (type == 5 && (i * j) % 2 + (i * j) % 3 == 0) ||
+              (type == 6 && ((i * j) % 2 + (i * j) % 3) % 2 == 0) ||
+              (type == 7 && ((i * j) % 3 + (i + j) % 2) % 2 == 0))
           {
             applied[true_pos.x][true_pos.y].flip();
           }
@@ -644,7 +680,8 @@ namespace op::qr
       }
       return applied;
     }
-      //https://www.jianshu.com/p/cfa2bae198ea
+    
+    //https://www.jianshu.com/p/cfa2bae198ea
     std::array<std::vector<std::vector<bool>>, 8> apply_all_mask_pattern()
     {
       std::array<std::vector<std::vector<bool>>, 8> applies;
@@ -660,7 +697,7 @@ namespace op::qr
       const std::size_t dimension = tables::QRTable[version].dimension;
       std::array<int, 8> penalties;
       std::size_t penalties_pos = 0;
-      for (auto &app:applies)
+      for (auto &app: applies)
       {
         int penalty = 0;
         //1
@@ -709,8 +746,8 @@ namespace op::qr
           for (int j = 1; j < dimension - 1; ++j)
           {
             if (app[i][j] == app[i][j + 1]
-              && app[i][j] == app[i + 1][j + 1]
-              && app[i][j] == app[i + 1][j])
+                && app[i][j] == app[i + 1][j + 1]
+                && app[i][j] == app[i + 1][j])
             {
               penalty += 3;
             }
@@ -747,7 +784,7 @@ namespace op::qr
                   else
                     return false;
                 }
-                else 
+                else
                   arr[pos] = 1;
               }
             }
@@ -881,3 +918,4 @@ namespace op::qr
     }
   };
 }
+#endif

@@ -1,4 +1,18 @@
-#pragma once
+//   Copyright 2022 opqr - caozhanhao
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+#ifndef OPQR_OPPOS_H
+#define OPQR_OPPOS_H
 #include <set>
 #include <vector>
 namespace op::pos
@@ -64,7 +78,7 @@ namespace op::pos
     
     PosBox &up(std::size_t n)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         p.y += n;
       }
@@ -73,7 +87,7 @@ namespace op::pos
     
     PosBox &down(std::size_t n)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         p.y -= n;
       }
@@ -82,7 +96,7 @@ namespace op::pos
     
     PosBox &left(std::size_t n)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         p.x -= n;
       }
@@ -91,7 +105,7 @@ namespace op::pos
     
     PosBox &right(std::size_t n)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         p.x += n;
       }
@@ -136,7 +150,7 @@ namespace op::pos
     
     void fill(std::vector<std::vector<bool>> &vec)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         vec[p.x][p.y] = 1;
       }
@@ -148,7 +162,7 @@ namespace op::pos
   public:
     std::set<Pos> box;
   public:
-    PosSet() {}
+    PosSet() = default;
     
     PosSet &add(const Pos &p1, const Pos &p2)
     {
@@ -171,10 +185,11 @@ namespace op::pos
     
     void fill(std::vector<std::vector<bool>> &vec)
     {
-      for (auto &p:box)
+      for (auto &p: box)
       {
         vec[p.x][p.y] = 1;
       }
     }
   };
 }
+#endif
