@@ -1,5 +1,5 @@
 #include <iostream>
-#include "opqr.h"
+#include "opqr.hpp"
 int main()
 {
   std::ofstream fs("C:\\Users\\caozhanhao\\Pictures\\test.ppm");

@@ -11,17 +11,17 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-#ifndef OPQR_OPQR_H
-#define OPQR_OPQR_H
+#ifndef OPQR_OPQR_HPP
+#define OPQR_OPQR_HPP
 #include <vector>
 #include <bitset>
 #include <charconv>
 #include <algorithm>
 #include <array>
-#include "optables.h"
-#include "oppic.h"
-#include "operror.h"
-#include "oppos.h"
+#include "optables.hpp"
+#include "oppic.hpp"
+#include "operror.hpp"
+#include "oppos.hpp"
 //void text_debug(std::vector<std::vector<bool>>& s)
 //{
 //  for (int i = s.size()-1 ; i >=0; --i)

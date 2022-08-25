@@ -11,8 +11,8 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-#ifndef OPQR_OPERROR_H
-#define OPQR_OPERROR_H
+#ifndef OPQR_OPERROR_HPP
+#define OPQR_OPERROR_HPP
 #include <stdexcept>
 #include <string>
 

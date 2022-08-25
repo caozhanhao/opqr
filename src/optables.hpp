@@ -11,9 +11,9 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-#ifndef OPQR_OPTABLES_H
-#define OPQR_OPTABLES_H
-#include "oppos.h"
+#ifndef OPQR_OPTABLES_HPP
+#define OPQR_OPTABLES_HPP
+#include "oppos.hpp"
 #include <vector>
 //https://files-cdn.cnblogs.com/files/elaron/qr_code.pdf
 //

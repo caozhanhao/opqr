@@ -11,8 +11,8 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-#ifndef OPQR_OPPIC_H
-#define OPQR_OPPIC_H
+#ifndef OPQR_OPPIC_HPP
+#define OPQR_OPPIC_HPP
 #include <vector>
 #include <fstream>
 namespace op::pic
