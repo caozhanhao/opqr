@@ -15,16 +15,19 @@
 #define OPQR_OPPOS_HPP
 #include <set>
 #include <vector>
-namespace op::pos
+namespace opqr::pos
 {
   class Pos
   {
   public:
-    std::size_t x;
-    std::size_t y;
+    int x;
+    int y;
   public:
     Pos(std::size_t x_, std::size_t y_)
         : x(x_), y(y_) {}
+    
+    Pos(std::array<std::size_t, 2> s)
+        : x(s[0]), y(s[1]) {}
     
     Pos() : x(0), y(0) {}
   };
@@ -42,6 +45,9 @@ namespace op::pos
     std::vector<Pos> box;
   public:
     PosBox(std::vector<Pos> posbox) : box(std::move(posbox)) {}
+    
+    template<std::size_t sz>
+    PosBox(std::array<std::array<std::size_t, 2>, sz> posbox) : box(posbox.cbegin(), posbox.cend()) {}
     
     PosBox(const Pos &p1, const Pos &p2)
     {
@@ -70,89 +76,29 @@ namespace op::pos
       return *this;
     }
     
-    PosBox &add(PosBox p)
-    {
-      box.insert(box.end(), std::make_move_iterator(p.box.begin()), std::make_move_iterator(p.box.end()));
-      return *this;
-    }
-    
-    PosBox &up(std::size_t n)
-    {
-      for (auto &p: box)
-      {
-        p.y += n;
-      }
-      return *this;
-    }
-    
-    PosBox &down(std::size_t n)
-    {
-      for (auto &p: box)
-      {
-        p.y -= n;
-      }
-      return *this;
-    }
-    
-    PosBox &left(std::size_t n)
-    {
-      for (auto &p: box)
-      {
-        p.x -= n;
-      }
-      return *this;
-    }
-    
-    PosBox &right(std::size_t n)
-    {
-      for (auto &p: box)
-      {
-        p.x += n;
-      }
-      return *this;
-    }
-    
-    PosBox &add_up(const PosBox &pb, std::size_t n)
-    {
-      for (int i = 0; i < pb.box.size(); ++i)
-      {
-        add(Pos(pb.box[i].x, pb.box[i].y + n));
-      }
-      return *this;
-    }
-    
-    PosBox &add_down(const PosBox &pb, std::size_t n)
-    {
-      for (int i = 0; i < pb.box.size(); ++i)
-      {
-        add(Pos(pb.box[i].x, pb.box[i].y - n));
-      }
-      return *this;
-    }
-    
-    PosBox &add_right(const PosBox &pb, std::size_t n)
-    {
-      for (int i = 0; i < pb.box.size(); ++i)
-      {
-        add(Pos(pb.box[i].x + n, pb.box[i].y));
-      }
-      return *this;
-    }
-    
-    PosBox &add_left(const PosBox &pb, std::size_t n)
-    {
-      for (int i = 0; i < pb.box.size(); ++i)
-      {
-        add(Pos(pb.box[i].x - n, pb.box[i].y));
-      }
-      return *this;
-    }
-    
     void fill(std::vector<std::vector<bool>> &vec)
     {
       for (auto &p: box)
       {
         vec[p.x][p.y] = 1;
+      }
+    }
+    
+    template<std::size_t sz>
+    void fill(std::vector<std::vector<bool>> &vec, std::bitset<sz> data)
+    {
+      for (std::size_t i = 0; i < box.size() && i < data.size(); ++i)
+      {
+        vec[box[i].x][box[i].y] = data[sz - i];
+      }
+    }
+    
+    template<std::size_t sz>
+    void fill_rev(std::vector<std::vector<bool>> &vec, std::bitset<sz> data)
+    {
+      for (std::size_t i = 0; i < box.size() && i < data.size(); ++i)
+      {
+        vec[box[i].x][box[i].y] = data[i];
       }
     }
   };
@@ -176,6 +122,11 @@ namespace op::pos
         }
       }
       return *this;
+    }
+    
+    void add(const Pos &p1)
+    {
+      box.insert(p1);
     }
     
     bool has_pos(const Pos &pos)

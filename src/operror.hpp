@@ -13,19 +13,20 @@
 //   limitations under the License.
 #ifndef OPQR_OPERROR_HPP
 #define OPQR_OPERROR_HPP
+
 #include <stdexcept>
 #include <string>
 
-#define OP_STRINGFY(x) _OP_STRINGFY(x)
-#define _OP_STRINGFY(x) #x
-#define OP_ERROR_LOCATION  __FILE__ ":" OP_STRINGFY(__LINE__) 
-namespace op::error
+#define OPQR_STRINGFY(x) _OPQR_STRINGFY(x)
+#define _OPQR_STRINGFY(x) #x
+#define OPQR_ERROR_LOCATION  __FILE__ ":" OPQR_STRINGFY(__LINE__)
+namespace opqr::error
 {
-  class Error : public std::logic_error
+  class Error : public std::runtime_error
   {
   public:
     Error(std::string location, std::string func_name, std::string details)
-        : logic_error("In File: " + location + ":" + func_name + "(): \n" + details) {}
+        : std::runtime_error("In File: " + location + ":" + func_name + "(): \n" + details) {}
   };
 }
 #endif

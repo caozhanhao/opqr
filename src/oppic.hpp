@@ -15,7 +15,7 @@
 #define OPQR_OPPIC_HPP
 #include <vector>
 #include <fstream>
-namespace op::pic
+namespace opqr::pic
 {
   class Pic
   {

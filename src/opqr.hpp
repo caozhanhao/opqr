@@ -68,7 +68,7 @@
 //  std::cout << std::flush;
 //}
 
-namespace op::qr
+namespace opqr
 {
   enum class ECLevel : std::size_t
   {
@@ -147,14 +147,16 @@ namespace op::qr
     std::vector<unsigned char> final_data;
     std::vector<std::vector<bool>> filled;
     std::vector<std::vector<bool>> final_qr;
-    pos::PosSet function_patterns;
+    pos::PosSet function_pattern_pos;
     int mask;
   public:
     QR(int version_, ECLevel level_, Mode mode_ = Mode::BIT8, int mask_ = -1)
         : version(version_), level(level_), mode(mode_), mask(mask_)
     {
       if (version_ > 40 || version_ < 1)
-        throw error::Error(OP_ERROR_LOCATION, __func__, "Version is range from 1 to 40.");
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Version is range from 1 to 40.");
+      }
     }
     
     QR() : version(-1), mask(-1), mode(Mode::BIT8) {}
@@ -204,12 +206,16 @@ namespace op::qr
       for (l = 3; l >= 0; --l)
       {
         version = 1;
-        while (version < 41 && tables::QRTable[version].level[l].capacity[to_sz(mode)] < raw.size())
+        while (version < 41 && tables::qr_info[version].level[l].capacity[to_sz(mode)] < raw.size())
+        {
           ++version;
+        }
         if (version == 41)
         {
           if (l == 0)
-            throw error::Error(OP_ERROR_LOCATION, __func__, "The data is too big.");
+          {
+            throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+          }
           else
             continue;
         }
@@ -241,23 +247,31 @@ namespace op::qr
     void init()
     {
       if (version < 0)
+      {
         select_qr();
-      else if (tables::QRTable[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
-        throw error::Error(OP_ERROR_LOCATION, __func__, "The data is too big.");
+      }
+      else if (tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+      }
       encoded_data.clear();
+      function_pattern_pos = tables::make_function_pattern_pos(version,
+                                                               tables::qr_info[version].dimension,
+                                                               tables::qr_info[version].alignment_pos,
+                                                               tables::qr_info[version].nalignment_pos);
     }
-    
+  
     void add_term(std::vector<bool> &v)
     {
-      int nt = tables::QRTable[version].level[to_sz(level)].capacity[to_sz(mode)] - raw.size();
+      int nt = tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] - raw.size();
       if (nt > 4) nt = 4;
       for (int i = 0; i < nt; ++i)
         v.emplace_back(0);
       
       while (v.size() % 8 != 0)
         v.emplace_back(0);
-      
-      int capacity = tables::QRTable[version].level[to_sz(level)].ndatawords * 8;
+  
+      int capacity = tables::qr_info[version].level[to_sz(level)].ndatawords * 8;
       int npadding = (capacity - v.size()) / 8;
       std::vector<bool> padding_bytes;
       bool flag = true;
@@ -282,7 +296,7 @@ namespace op::qr
     {
       std::vector<bool> v = {0, 0, 0, 1};
       //Character Count Indicator
-      int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
+      int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
         case 10:
@@ -322,7 +336,7 @@ namespace op::qr
     {
       std::vector<bool> v = {0, 0, 1, 0};
       //Character Count Indicator
-      int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
+      int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
         case 9:
@@ -342,7 +356,9 @@ namespace op::qr
         {
           auto w = tables::alnum[raw[i]];
           if (w == -1)
-            throw error::Error(OP_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
+          {
+            throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
+          }
           add_bits<11>(v, w);
           break;
         }
@@ -351,7 +367,9 @@ namespace op::qr
           auto w1 = tables::alnum[raw[i]];
           auto w2 = tables::alnum[raw[i + 1]];
           if (w1 == -1 || w2 == -1)
-            throw error::Error(OP_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
+          {
+            throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
+          }
           add_bits<11>(v, w1 * 45 + w2);
         }
       }
@@ -363,7 +381,7 @@ namespace op::qr
     {
       std::vector<bool> v = {0, 1, 0, 0};
       //Character Count Indicator
-      int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
+      int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
         case 8:
@@ -383,7 +401,7 @@ namespace op::qr
     {
       std::vector<bool> v = {1, 0, 0, 0};
       //Character Count Indicator
-      int ncci = tables::QRTable[version].nccindicator[to_sz(mode)];
+      int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
         case 8:
@@ -434,7 +452,9 @@ namespace op::qr
           add_bits<13>(v, h + l);
         }
         else
-          throw error::Error(OP_ERROR_LOCATION, __func__, "The data is not Kanji.");
+        {
+          throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is not Kanji.");
+        }
       }
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
@@ -447,16 +467,18 @@ namespace op::qr
       //version = 1;
       //level = ECLevel::H;
       //expected 42 159 74 221 244 169 239 150 138 70 237 85 224 96 74 219 61
-      
+  
       std::array<unsigned char, 123> ecwork;
       ecwork.fill(0);
-      
-      int necb_group = tables::QRTable[version].level[to_sz(level)].necb_group;
-      auto ecb_group = tables::QRTable[version].level[to_sz(level)].ecb_group;
+  
+      int necb_group = tables::qr_info[version].level[to_sz(level)].necb_group;
+      auto ecb_group = tables::qr_info[version].level[to_sz(level)].ecb_group;
       auto move = [&ecwork]()
       {
         for (int m = 0; m < 122; ++m)
+        {
           ecwork[m] = ecwork[m + 1];
+        }
         ecwork[122] = 0;
       };
       auto data_it = encoded_data.begin();
@@ -493,11 +515,11 @@ namespace op::qr
     
     void allocate_data()
     {
-      int necb_group = tables::QRTable[version].level[to_sz(level)].necb_group;
-      auto ecb_group = tables::QRTable[version].level[to_sz(level)].ecb_group;
+      int necb_group = tables::qr_info[version].level[to_sz(level)].necb_group;
+      auto ecb_group = tables::qr_info[version].level[to_sz(level)].ecb_group;
       int ndatawords_max = ecb_group[necb_group - 1].ndatawords;
       int necwords_max = ecb_group[necb_group - 1].ntotalwords - ecb_group[necb_group - 1].ndatawords;
-      
+  
       for (int i = 0; i < ndatawords_max; i++)
       {
         int pos = i;
@@ -531,92 +553,27 @@ namespace op::qr
     
     void fill_function_patterns()
     {
-      const std::size_t dimension = tables::QRTable[version].dimension;
+      const std::size_t dimension = tables::qr_info[version].dimension;
       filled.resize(dimension);
       for (auto &r: filled)
+      {
         r.resize(dimension);
-      
+      }
+  
       //Position Detection Pattern
-      pos::PosBox pdp_box(tables::position_detection_pattern_pos);
-      pos::PosBox pdp_box_temp(tables::position_detection_pattern_pos);
-      pdp_box.add_up(pdp_box_temp, dimension - 7)
-          .add_right(pdp_box_temp.up(dimension - 7), dimension - 7)
-          .fill(filled);
-      
-      
+      tables::make_pdp_pos(dimension).fill(filled);
       //Alignment Pattern
-      auto nap = tables::QRTable[version].nalignment_pos;
-      auto ap = tables::QRTable[version].alignment_pos;
-      pos::PosBox ap_box;
-      for (int i = 0; i < nap; i++)
-      {
-        for (int j = 0; j < nap; j++)
-        {
-          if (
-              (ap[i] == 6 && ap[j] == 6)
-              || (ap[i] == 6 && ap[j] == dimension - 7)
-              || (ap[i] == dimension - 7 && ap[j] == dimension - 7)
-              )
-            continue;
-          else
-            ap_box.add(pos::Pos(ap[i], ap[j]));//center
-        }
-      }
-      auto apbt = ap_box;
-      for (int i = 0; i < apbt.box.size(); ++i)
-      {
-        ap_box.add(pos::Pos(apbt.box[i].x - 2, apbt.box[i].y + 2),
-                   pos::Pos(apbt.box[i].x + 2, apbt.box[i].y + 2));
-        ap_box.add(pos::Pos(apbt.box[i].x - 2, apbt.box[i].y + 1),
-                   pos::Pos(apbt.box[i].x - 2, apbt.box[i].y - 2));
-        ap_box.add(pos::Pos(apbt.box[i].x - 1, apbt.box[i].y - 2),
-                   pos::Pos(apbt.box[i].x + 2, apbt.box[i].y - 2));
-        ap_box.add(pos::Pos(apbt.box[i].x + 2, apbt.box[i].y - 1),
-                   pos::Pos(apbt.box[i].x + 2, apbt.box[i].y + 1));
-      }
-      ap_box.fill(filled);
-      
+      tables::make_alignment_pos(tables::qr_info[version].alignment_pos,
+                                 tables::qr_info[version].nalignment_pos,
+                                 dimension).fill(filled);
+  
       //Timing Pattern
-      pos::PosBox tp_box;
-      for (int i = 8; i <= dimension - 9; i += 2)
-        tp_box.add(pos::Pos(6, i));
-      for (int i = 8; i <= dimension - 9; i += 2)
-        tp_box.add(pos::Pos(i, dimension - 7));
-      tp_box.fill(filled);
-      
-      //fill function zone
-      //around Position Detection Pattern
-      function_patterns.add({0, 0}, {7, 7});
-      function_patterns.add({0, dimension - 1}, {7, dimension - 8});
-      function_patterns.add({dimension - 8, dimension - 8}, {dimension - 1, dimension - 1});
-      
-      //around Alignment Pattern
-      auto apbt_left_down = apbt;
-      apbt_left_down.left(2).down(2);
-      apbt.right(2).up(2);
-      for (int i = 0; i < apbt.box.size(); ++i)
-        function_patterns.add(apbt_left_down.box[i], apbt.box[i]);
-      
-      //around Timing Pattern
-      function_patterns.add({6, 8}, {6, dimension - 10});
-      function_patterns.add({9, dimension - 7}, {dimension - 9, dimension - 7});
-      
-      //around Format Information
-      function_patterns.add(pos::Pos(8, dimension - 1), pos::Pos(8, dimension - 9));
-      function_patterns.add(pos::Pos(0, dimension - 9), pos::Pos(8, dimension - 9));
-      function_patterns.add(pos::Pos(dimension - 8, dimension - 9), pos::Pos(dimension - 1, dimension - 9));
-      function_patterns.add(pos::Pos(8, 0), pos::Pos(8, 7));
-      //around Version Infomation(Version >= 7)
-      if (version >= 7)
-      {
-        function_patterns.add(pos::Pos(0, 8), pos::Pos(5, 10));
-        function_patterns.add(pos::Pos(dimension - 9, dimension - 1), pos::Pos(dimension - 11, dimension - 6));
-      }
+      tables::make_timing_pos(dimension).fill(filled);
     }
-    
+  
     void fill_data()
     {
-      const std::size_t dimension = tables::QRTable[version].dimension;
+      const std::size_t dimension = tables::qr_info[version].dimension;
       pos::Pos pos(dimension - 1, 0);//from (dimension - 1,0)
       
       int delta_y = 1;
@@ -628,7 +585,7 @@ namespace op::qr
           pos.x += delta_x;
           if (delta_x > 0) pos.y += delta_y;
           delta_x = -delta_x;
-          
+  
           if (pos.y < 0 || pos.y >= dimension)
           {
             pos.y -= delta_y;
@@ -636,13 +593,12 @@ namespace op::qr
             pos.x -= 2;
             if (pos.x == 6) pos.x--;//skip Timing Pattern
           }
-        } while (function_patterns.has_pos(pos));
+        } while (function_pattern_pos.has_pos(pos));
       };
       std::vector<bool> final_databits;
       dec_to_bin(final_data.cbegin(), final_data.cend(), final_databits);
       //Remainder Bits
-      final_databits.insert(final_databits.end(), tables::QRTable[version].remainder_bits, 0);
-      
+      final_databits.insert(final_databits.end(), tables::qr_info[version].remainder_bits, 0);
       for (auto b: final_databits)
       {
         filled[pos.x][pos.y] = b;
@@ -654,7 +610,7 @@ namespace op::qr
     std::vector<std::vector<bool>> apply_a_mask_pattern(int type)
     {
       std::vector<std::vector<bool>> applied = filled;
-      const std::size_t dimension = tables::QRTable[version].dimension;
+      const std::size_t dimension = tables::qr_info[version].dimension;
       for (int i = 0; i < dimension; i++)
       {
         for (int j = 0; j < dimension; j++)
@@ -663,8 +619,10 @@ namespace op::qr
           //According to the QR Spec, (i, j) = (0, 0) is in the top left module in the symbol.
           //https://files-cdn.cnblogs.com/files/elaron/qr_code.pdf
           //but this (0,0) is in the bottom left
-          if (function_patterns.has_pos(true_pos))
+          if (function_pattern_pos.has_pos(true_pos))
+          {
             continue;
+          }
           if ((type == 0 && (i + j) % 2 == 0) ||
               (type == 1 && i % 2 == 0) ||
               (type == 2 && j % 3 == 0) ||
@@ -694,7 +652,7 @@ namespace op::qr
     
     std::array<int, 8> evaluate_mask_pattern(const std::array<std::vector<std::vector<bool>>, 8> &applies)
     {
-      const std::size_t dimension = tables::QRTable[version].dimension;
+      const std::size_t dimension = tables::qr_info[version].dimension;
       std::array<int, 8> penalties;
       std::size_t penalties_pos = 0;
       for (auto &app: applies)
@@ -834,87 +792,27 @@ namespace op::qr
     
     void fill_format_infomation()
     {
-      const std::size_t dimension = tables::QRTable[version].dimension;
+      const std::size_t dimension = tables::qr_info[version].dimension;
       //Format infomation
       int fmt = ((to_sz(level) ^ 1) << 3) | mask;
       int modulo = fmt << 10;
       for (int i = 14; i >= 10; i--)
       {
         if ((modulo & (1 << i)) == 0)
+        {
           continue;
+        }
         modulo ^= 0x537 << (i - 10);
       }
       fmt = ((fmt << 10) + modulo) ^ 0x5412;//0x5412 == 101010000010010 to ensure that result data is not all 0
-      std::bitset<15> formatbit(fmt);
-      auto formatstr = formatbit.to_string();
-      pos::PosBox fpb1(
-          {{8, dimension - 1},
-           {8, dimension - 2},
-           {8, dimension - 3},
-           {8, dimension - 4},
-           {8, dimension - 5},
-           {8, dimension - 6},
-           {8, dimension - 8},
-           {8, dimension - 9},
-           {7, dimension - 9},
-           {5, dimension - 9},
-           {4, dimension - 9},
-           {3, dimension - 9},
-           {2, dimension - 9},
-           {1, dimension - 9},
-           {0, dimension - 9}
-          });
-      for (int i = 0; i < 15; ++i)
-        final_qr[fpb1.box[i].x][fpb1.box[i].y] = formatstr[14 - i] - '0';
-      pos::PosBox fpb2(
-          {{dimension - 1, dimension - 9},
-           {dimension - 2, dimension - 9},
-           {dimension - 3, dimension - 9},
-           {dimension - 4, dimension - 9},
-           {dimension - 5, dimension - 9},
-           {dimension - 6, dimension - 9},
-           {dimension - 7, dimension - 9},
-           {dimension - 8, dimension - 9},
-           {8,             6},
-           {8,             5},
-           {8,             4},
-           {8,             3},
-           {8,             2},
-           {8,             1},
-           {8,             0}
-          }
-      );
-      for (int i = 0; i < 15; ++i)
-        final_qr[fpb2.box[i].x][fpb2.box[i].y] = formatstr[14 - i] - '0';
+      std::bitset<15> format_bits(fmt);
+      auto[fpb1, fpb2] = tables::make_format_pos(dimension);
+      fpb1.fill_rev(final_qr, format_bits);
+      fpb2.fill_rev(final_qr, format_bits);
       //Version Infomation
-      if (version >= 7)
-      {
-        std::bitset<18> bits(tables::VersionInfo[version]);
-        pos::Pos pos1(0, 10);
-        for (int i = 0; i < 18; ++i)
-        {
-          final_qr[pos1.x][pos1.y] = bits[i];
-          if (pos1.y != 8)
-            pos1.y--;
-          else
-          {
-            pos1.x++;
-            pos1.y = 10;
-          }
-        }
-        pos::Pos pos2(dimension - 11, dimension - 1);
-        for (int i = 0; i < 18; ++i)
-        {
-          final_qr[pos2.x][pos2.y] = bits[i];
-          if (pos2.x != dimension - 9)
-            pos2.x++;
-          else
-          {
-            pos2.x = dimension - 11;
-            pos2.y--;
-          }
-        }
-      }
+      auto[vpb1, vpb2] = tables::make_version_pos(dimension);
+      vpb1.fill(final_qr, tables::version_info[version]);
+      vpb2.fill(final_qr, tables::version_info[version]);
     }
   };
 }
