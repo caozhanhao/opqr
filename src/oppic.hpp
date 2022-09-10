@@ -24,26 +24,23 @@ namespace opqr::pic
   public:
     Pic(std::vector<std::vector<bool>> data_)
         : data(std::move(data_)) {}
-    
-    void paint(std::ofstream &fs)
+  
+    void paint(std::ofstream &fs, std::size_t size)
     {
-      fs << "P3\n" << data.size() << " " << data[0].size() << "\n255\n";
+      fs << "P1\n" << data.size() * size << " " << data[0].size() * size << "\n";
       for (int i = data.size() - 1; i >= 0; --i)
       {
-        for (int j = 0; j < data[i].size(); ++j)
+        for (int l = 0; l < size; ++l)
         {
-          int ir = 0;
-          int ig = 0;
-          int ib = 0;
-          if (!data[j][i])
+          for (int j = 0; j < data[i].size(); ++j)
           {
-            ir = 255;
-            ig = 255;
-            ib = 255;
+            for (int k = 0; k < size; ++k)
+            {
+              fs << data[j][i] << "\n";
+            }
           }
-          fs << ir << " " << ig << " " << ib << "\n";
+          fs << "\n";
         }
-        fs << "\n";
       }
       fs.close();
     }

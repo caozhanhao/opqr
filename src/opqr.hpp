@@ -15,6 +15,7 @@
 #define OPQR_OPQR_HPP
 #include <vector>
 #include <bitset>
+#include <cstddef>
 #include <charconv>
 #include <algorithm>
 #include <array>
@@ -84,26 +85,30 @@ namespace opqr
   };
   
   void bin_to_dec(const std::vector<bool>::const_iterator first, const std::vector<bool>::const_iterator last,
-                  std::vector<unsigned char> &dest)
+                  std::vector<std::byte> &dest)
   {
     for (auto it = first; it < last; it += 8)
     {
       std::bitset<8> bits;
       for (int j = 0; j < 8; ++j)
+      {
         bits[7 - j] = *(it + j);
-      dest.emplace_back(bits.to_ulong());
+      }
+      dest.emplace_back(static_cast<std::byte>(bits.to_ulong()));
     }
   }
   
-  void dec_to_bin(const std::vector<unsigned char>::const_iterator first,
-                  const std::vector<unsigned char>::const_iterator last,
+  void dec_to_bin(const std::vector<std::byte>::const_iterator first,
+                  const std::vector<std::byte>::const_iterator last,
                   std::vector<bool> &dest)
   {
     for (auto it = first; it < last; ++it)
     {
-      std::bitset<8> bits(*it);
+      std::bitset<8> bits(std::to_integer<unsigned long>(*it));
       for (int j = 0; j < 8; ++j)
+      {
         dest.emplace_back(bits[7 - j]);
+      }
     }
   }
   
@@ -142,9 +147,9 @@ namespace opqr
     ECLevel level;
     Mode mode;
     std::string raw;
-    std::vector<unsigned char> encoded_data;
-    std::vector<unsigned char> ec_data;
-    std::vector<unsigned char> final_data;
+    std::vector<std::byte> encoded_data;
+    std::vector<std::byte> ec_data;
+    std::vector<std::byte> final_data;
     std::vector<std::vector<bool>> filled;
     std::vector<std::vector<bool>> final_qr;
     pos::PosSet function_pattern_pos;
@@ -468,8 +473,8 @@ namespace opqr
       //level = ECLevel::H;
       //expected 42 159 74 221 244 169 239 150 138 70 237 85 224 96 74 219 61
   
-      std::array<unsigned char, 123> ecwork;
-      ecwork.fill(0);
+      std::array<std::byte, 123> ecwork;
+      ecwork.fill(std::byte{0});
   
       int necb_group = tables::qr_info[version].level[to_sz(level)].necb_group;
       auto ecb_group = tables::qr_info[version].level[to_sz(level)].ecb_group;
@@ -479,7 +484,7 @@ namespace opqr
         {
           ecwork[m] = ecwork[m + 1];
         }
-        ecwork[122] = 0;
+        ecwork[122] = std::byte{0};
       };
       auto data_it = encoded_data.begin();
       for (int i = 0; i < necb_group; i++)
@@ -490,18 +495,18 @@ namespace opqr
         
         for (int j = 0; j < nec_block; j++)
         {
-          ecwork.fill(0);
+          ecwork.fill(std::byte{0});
           std::copy(data_it, data_it + ndatawords, ecwork.begin());
           
           for (int k = 0; k < ndatawords; k++)
           {
-            if (ecwork[0] == 0)
+            if (ecwork[0] == std::byte{0})
             {
               move();
               continue;
             }
-            
-            int e = tables::fac_to_exp[ecwork[0]];
+  
+            int e = tables::fac_to_exp[std::to_integer<short>(ecwork[0])];
             move();
             for (int m = 0; m < necwords; ++m)
               ecwork[m] ^= tables::exp_to_fac[(tables::generator[necwords][m] + e) % 255];

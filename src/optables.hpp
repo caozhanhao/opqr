@@ -298,27 +298,59 @@ namespace opqr::tables
                7, {6, 30, 58, 86, 114, 142, 170}}
           }};
   
-  constexpr std::array<unsigned char, 256> exp_to_fac
+  constexpr std::array<std::byte, 256> exp_to_fac
       {
-          1, 2, 4, 8, 16, 32, 64, 128, 29, 58, 116, 232, 205, 135, 19, 38,
-          76, 152, 45, 90, 180, 117, 234, 201, 143, 3, 6, 12, 24, 48, 96, 192,
-          157, 39, 78, 156, 37, 74, 148, 53, 106, 212, 181, 119, 238, 193, 159, 35,
-          70, 140, 5, 10, 20, 40, 80, 160, 93, 186, 105, 210, 185, 111, 222, 161,
-          95, 190, 97, 194, 153, 47, 94, 188, 101, 202, 137, 15, 30, 60, 120, 240,
-          253, 231, 211, 187, 107, 214, 177, 127, 254, 225, 223, 163, 91, 182, 113, 226,
-          217, 175, 67, 134, 17, 34, 68, 136, 13, 26, 52, 104, 208, 189, 103, 206,
-          129, 31, 62, 124, 248, 237, 199, 147, 59, 118, 236, 197, 151, 51, 102, 204,
-          133, 23, 46, 92, 184, 109, 218, 169, 79, 158, 33, 66, 132, 21, 42, 84,
-          168, 77, 154, 41, 82, 164, 85, 170, 73, 146, 57, 114, 228, 213, 183, 115,
-          230, 209, 191, 99, 198, 145, 63, 126, 252, 229, 215, 179, 123, 246, 241, 255,
-          227, 219, 171, 75, 150, 49, 98, 196, 149, 55, 110, 220, 165, 87, 174, 65,
-          130, 25, 50, 100, 200, 141, 7, 14, 28, 56, 112, 224, 221, 167, 83, 166,
-          81, 162, 89, 178, 121, 242, 249, 239, 195, 155, 43, 86, 172, 69, 138, 9,
-          18, 36, 72, 144, 61, 122, 244, 245, 247, 243, 251, 235, 203, 139, 11, 22,
-          44, 88, 176, 125, 250, 233, 207, 131, 27, 54, 108, 216, 173, 71, 142, 1
+          std::byte{1}, std::byte{2}, std::byte{4}, std::byte{8}, std::byte{16}, std::byte{32}, std::byte{64},
+          std::byte{128}, std::byte{29}, std::byte{58}, std::byte{116}, std::byte{232}, std::byte{205}, std::byte{135},
+          std::byte{19}, std::byte{38}, std::byte{
+          76}, std::byte{152}, std::byte{45}, std::byte{90}, std::byte{180}, std::byte{117}, std::byte{234},
+          std::byte{201}, std::byte{143}, std::byte{3}, std::byte{6}, std::byte{12}, std::byte{24}, std::byte{48},
+          std::byte{96}, std::byte{192}, std::byte{
+          157}, std::byte{39}, std::byte{78}, std::byte{156}, std::byte{37}, std::byte{74}, std::byte{148},
+          std::byte{53}, std::byte{106}, std::byte{212}, std::byte{181}, std::byte{119}, std::byte{238}, std::byte{193},
+          std::byte{159}, std::byte{35}, std::byte{
+          70}, std::byte{140}, std::byte{5}, std::byte{10}, std::byte{20}, std::byte{40}, std::byte{80}, std::byte{160},
+          std::byte{93}, std::byte{186}, std::byte{105}, std::byte{210}, std::byte{185}, std::byte{111}, std::byte{222},
+          std::byte{161}, std::byte{
+          95}, std::byte{190}, std::byte{97}, std::byte{194}, std::byte{153}, std::byte{47}, std::byte{94},
+          std::byte{188}, std::byte{101}, std::byte{202}, std::byte{137}, std::byte{15}, std::byte{30}, std::byte{60},
+          std::byte{120}, std::byte{240}, std::byte{
+          253}, std::byte{231}, std::byte{211}, std::byte{187}, std::byte{107}, std::byte{214}, std::byte{177},
+          std::byte{127}, std::byte{254}, std::byte{225}, std::byte{223}, std::byte{163}, std::byte{91}, std::byte{182},
+          std::byte{113}, std::byte{226}, std::byte{
+          217}, std::byte{175}, std::byte{67}, std::byte{134}, std::byte{17}, std::byte{34}, std::byte{68},
+          std::byte{136}, std::byte{13}, std::byte{26}, std::byte{52}, std::byte{104}, std::byte{208}, std::byte{189},
+          std::byte{103}, std::byte{206}, std::byte{
+          129}, std::byte{31}, std::byte{62}, std::byte{124}, std::byte{248}, std::byte{237}, std::byte{199},
+          std::byte{147}, std::byte{59}, std::byte{118}, std::byte{236}, std::byte{197}, std::byte{151}, std::byte{51},
+          std::byte{102}, std::byte{204}, std::byte{
+          133}, std::byte{23}, std::byte{46}, std::byte{92}, std::byte{184}, std::byte{109}, std::byte{218},
+          std::byte{169}, std::byte{79}, std::byte{158}, std::byte{33}, std::byte{66}, std::byte{132}, std::byte{21},
+          std::byte{42}, std::byte{84}, std::byte{
+          168}, std::byte{77}, std::byte{154}, std::byte{41}, std::byte{82}, std::byte{164}, std::byte{85},
+          std::byte{170}, std::byte{73}, std::byte{146}, std::byte{57}, std::byte{114}, std::byte{228}, std::byte{213},
+          std::byte{183}, std::byte{115}, std::byte{
+          230}, std::byte{209}, std::byte{191}, std::byte{99}, std::byte{198}, std::byte{145}, std::byte{63},
+          std::byte{126}, std::byte{252}, std::byte{229}, std::byte{215}, std::byte{179}, std::byte{123},
+          std::byte{246}, std::byte{241}, std::byte{255}, std::byte{
+          227}, std::byte{219}, std::byte{171}, std::byte{75}, std::byte{150}, std::byte{49}, std::byte{98},
+          std::byte{196}, std::byte{149}, std::byte{55}, std::byte{110}, std::byte{220}, std::byte{165}, std::byte{87},
+          std::byte{174}, std::byte{65}, std::byte{
+          130}, std::byte{25}, std::byte{50}, std::byte{100}, std::byte{200}, std::byte{141}, std::byte{7},
+          std::byte{14}, std::byte{28}, std::byte{56}, std::byte{112}, std::byte{224}, std::byte{221}, std::byte{167},
+          std::byte{83}, std::byte{166}, std::byte{
+          81}, std::byte{162}, std::byte{89}, std::byte{178}, std::byte{121}, std::byte{242}, std::byte{249},
+          std::byte{239}, std::byte{195}, std::byte{155}, std::byte{43}, std::byte{86}, std::byte{172}, std::byte{69},
+          std::byte{138}, std::byte{9}, std::byte{
+          18}, std::byte{36}, std::byte{72}, std::byte{144}, std::byte{61}, std::byte{122}, std::byte{244},
+          std::byte{245}, std::byte{247}, std::byte{243}, std::byte{251}, std::byte{235}, std::byte{203},
+          std::byte{139}, std::byte{11}, std::byte{22}, std::byte{
+          44}, std::byte{88}, std::byte{176}, std::byte{125}, std::byte{250}, std::byte{233}, std::byte{207},
+          std::byte{131}, std::byte{27}, std::byte{54}, std::byte{108}, std::byte{216}, std::byte{173}, std::byte{71},
+          std::byte{142}, std::byte{1}
       };
   
-  constexpr std::array<unsigned char, 256> fac_to_exp
+  constexpr std::array<short, 256> fac_to_exp
       {
           0, 0, 1, 25, 2, 50, 26, 198, 3, 223, 51, 238, 27, 104, 199, 75,
           4, 100, 224, 14, 52, 141, 239, 129, 28, 193, 105, 248, 200, 8, 76, 113,
@@ -338,7 +370,7 @@ namespace opqr::tables
           79, 174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168, 80, 88, 175
       };
   
-  constexpr std::array<std::array<unsigned char, 68>, 69> generator
+  constexpr std::array<std::array<short, 68>, 69> generator
       {
           {
               {0},

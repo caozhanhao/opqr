@@ -6,6 +6,6 @@ int main()
   opqr::QR qr;
   qr.add_data("https://gitee.com/cmvy2020/opqr");
   auto pic = qr.generate();
-  pic.paint(fs);
+  pic.paint(fs, 10);
   return 0;
 }
