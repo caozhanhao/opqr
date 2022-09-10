@@ -1,11 +1,11 @@
-#include <iostream>
+#include <fstream>
 #include "opqr.hpp"
+
+using namespace opqr;
 int main()
 {
-  std::ofstream fs("test.ppm");
-  opqr::QR qr;
-  qr.add_data("https://gitee.com/cmvy2020/opqr");
-  auto pic = qr.generate();
-  pic.paint(fs, 10);
+  std::ofstream bmp("test.bmp");
+  QR qr("https://gitee.com/cmvy2020/opqr");
+  qr.generate().paint(pic::Format::BMP, bmp);
   return 0;
 }

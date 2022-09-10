@@ -91,9 +91,7 @@ namespace opqr
     {
       std::bitset<8> bits;
       for (int j = 0; j < 8; ++j)
-      {
         bits[7 - j] = *(it + j);
-      }
       dest.emplace_back(static_cast<std::byte>(bits.to_ulong()));
     }
   }
@@ -106,9 +104,7 @@ namespace opqr
     {
       std::bitset<8> bits(std::to_integer<unsigned long>(*it));
       for (int j = 0; j < 8; ++j)
-      {
         dest.emplace_back(bits[7 - j]);
-      }
     }
   }
   
@@ -163,15 +159,21 @@ namespace opqr
         throw error::Error(OPQR_ERROR_LOCATION, __func__, "Version is range from 1 to 40.");
       }
     }
-    
-    QR() : version(-1), mask(-1), mode(Mode::BIT8) {}
-    
-    void add_data(const std::string &data)
+  
+    QR(std::string data)
+        : version(-1), mask(-1), mode(Mode::BIT8)
     {
-      raw = data;
+      add_data(std::move(data));
+    }
+  
+    QR() : version(-1), mask(-1), mode(Mode::BIT8) {}
+  
+    void add_data(std::string data)
+    {
+      raw = std::move(data);
       init();
     }
-    
+  
     void set_mode(Mode mode_)
     {
       mode = mode_;
