@@ -87,16 +87,16 @@ namespace opqr::pos
     template<std::size_t sz>
     void fill(std::vector<std::vector<bool>> &vec, std::bitset<sz> data)
     {
-      for (std::size_t i = 0; i < box.size() && i < data.size(); ++i)
+      for (std::size_t i = 0; i < sz; ++i)
       {
-        vec[box[i].x][box[i].y] = data[sz - i];
+        vec[box[i].x][box[i].y] = data[sz - i - 1];
       }
     }
     
     template<std::size_t sz>
     void fill_rev(std::vector<std::vector<bool>> &vec, std::bitset<sz> data)
     {
-      for (std::size_t i = 0; i < box.size() && i < data.size(); ++i)
+      for (std::size_t i = 0; i < sz; ++i)
       {
         vec[box[i].x][box[i].y] = data[i];
       }
