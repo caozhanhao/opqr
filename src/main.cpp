@@ -1,5 +1,5 @@
 #include <fstream>
-#include "opqr.hpp"
+#include "../include/opqr/opqr.hpp"
 
 using namespace opqr;
 int main()
