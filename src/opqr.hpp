@@ -73,7 +73,7 @@ namespace opqr
 {
   enum class ECLevel : std::size_t
   {
-    L = 0, M, Q, H
+    L = 0, M, Q, H, UNDEF
   };
   enum class Mode : std::size_t
   {
@@ -81,11 +81,10 @@ namespace opqr
     ALNUM,
     BIT8,
     KANJI,
-    EMPTY
   };
-  
+
   void bin_to_dec(const std::vector<bool>::const_iterator first, const std::vector<bool>::const_iterator last,
-                  std::vector<std::byte> &dest)
+    std::vector<std::byte> &dest)
   {
     for (auto it = first; it < last; it += 8)
     {
@@ -95,10 +94,10 @@ namespace opqr
       dest.emplace_back(static_cast<std::byte>(bits.to_ulong()));
     }
   }
-  
+
   void dec_to_bin(const std::vector<std::byte>::const_iterator first,
-                  const std::vector<std::byte>::const_iterator last,
-                  std::vector<bool> &dest)
+    const std::vector<std::byte>::const_iterator last,
+    std::vector<bool> &dest)
   {
     for (auto it = first; it < last; ++it)
     {
@@ -107,7 +106,7 @@ namespace opqr
         dest.emplace_back(bits[7 - j]);
     }
   }
-  
+
   template<std::size_t S>
   void add_bits(std::vector<bool> &v, int a)
   {
@@ -115,85 +114,110 @@ namespace opqr
     for (int i = S - 1; i >= 0; --i)
       v.emplace_back(bits[i]);
   }
-  
+
   ECLevel to_ecl(std::size_t l)
   {
     return static_cast<ECLevel>(l);
   }
-  
+
   Mode to_mode(std::size_t l)
   {
     return static_cast<Mode>(l);
   }
-  
+
   std::size_t to_sz(ECLevel l)
   {
     return static_cast<std::size_t>(l);
   }
-  
+
   std::size_t to_sz(Mode l)
   {
     return static_cast<std::size_t>(l);
   }
-  
   class QR
   {
-  private:
+  public:
     int version;
     ECLevel level;
     Mode mode;
+    std::vector<std::vector<bool>> final_qr;
     std::string raw;
+    int mask;
+  private:
+    bool inited;
     std::vector<std::byte> encoded_data;
     std::vector<std::byte> ec_data;
     std::vector<std::byte> final_data;
     std::vector<std::vector<bool>> filled;
-    std::vector<std::vector<bool>> final_qr;
     pos::PosSet function_pattern_pos;
-    int mask;
   public:
-    QR(int version_, ECLevel level_, Mode mode_ = Mode::BIT8, int mask_ = -1)
-        : version(version_), level(level_), mode(mode_), mask(mask_)
-    {
-      if (version_ > 40 || version_ < 1)
-      {
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Version is range from 1 to 40.");
-      }
-    }
-  
+    QR(int version_ = -1, ECLevel level_ = ECLevel::UNDEF, Mode mode_ = Mode::BIT8, int mask_ = -1)
+      : version(version_), level(level_), mode(mode_), mask(mask_), inited(false)
+    {}
+
     QR(std::string data)
-        : version(-1), mask(-1), mode(Mode::BIT8)
+      : version(-1), mask(-1), level(ECLevel::UNDEF), mode(Mode::BIT8), inited(false)
     {
       add_data(std::move(data));
     }
-  
-    QR() : version(-1), mask(-1), mode(Mode::BIT8) {}
-  
-    void add_data(std::string data)
+
+    QR &add_data(std::string data)
     {
+      if (inited)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not add data twice.");
       raw = std::move(data);
       init();
+      return *this;
     }
-  
-    void set_mode(Mode mode_)
+
+    QR &set_mode(Mode mode_)
     {
+      if (inited)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set mode after adding data.");
       mode = mode_;
+      return *this;
     }
-    
-    void set_mask(int m)
+
+    QR &set_mask(int m)
     {
+      if (inited)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set mask after adding data.");
       mask = m;
+      return *this;
     }
-    
-    void set_version(int v)
+
+    QR &set_version(int v)
     {
+      if (inited)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set version after adding data.");
       version = v;
+      return *this;
     }
-    
-    void set_level(ECLevel l)
+
+    QR &set_level(ECLevel l)
     {
+      if (inited)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set level after adding data.");
       level = l;
+      return *this;
     }
-    
+    QR &clear()
+    {
+      encoded_data.clear();
+      ec_data.clear();
+      final_data.clear();
+      function_pattern_pos.box.clear();
+      final_qr.clear();
+      filled.clear();
+      raw.clear();
+      version = -1;
+      mask = -1;
+      mode = Mode::BIT8;
+      inited = false;
+      return *this;
+    }
+
+
     pic::Pic generate()
     {
       data_encode();
@@ -205,55 +229,79 @@ namespace opqr
       fill_format_infomation();
       return pic::Pic(final_qr);
     }
-  
+
   private:
     void select_qr()
     {
-      int l;
-      for (l = 3; l >= 0; --l)
+      if (level == ECLevel::UNDEF && version == -1)
       {
-        version = 1;
-        while (version < 41 && tables::qr_info[version].level[l].capacity[to_sz(mode)] < raw.size())
+        int l;
+        for (l = 3; l >= 0; --l)
         {
-          ++version;
-        }
-        if (version == 41)
-        {
-          if (l == 0)
+          version = 1;
+          while (version < 41 && tables::qr_info[version].level[l].capacity[to_sz(mode)] < raw.size())
           {
-            throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+            ++version;
+          }
+          if (version == 41)
+          {
+            if (l == 0)
+            {
+              throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+            }
+            else
+              continue;
           }
           else
-            continue;
+            break;
         }
-        else
-          break;
+        level = to_ecl(l);
       }
-      level = to_ecl(l);
+      else if (level != ECLevel::UNDEF)//version == -1
+      {
+        version = 1;
+        while (version < 41 && tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
+          ++version;
+        if (version == 41)
+          throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+      }
+      else //ecl undef
+      {
+        int l = 3;
+        while (l >= 0 && tables::qr_info[version].level[l].capacity[to_sz(mode)] < raw.size())
+        {
+          --l;
+        }
+        if (l == -1)
+        {
+          throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is too big.");
+        }
+        level = to_ecl(l);
+      }
     }
-    
+
     void data_encode()
     {
       switch (mode)
       {
-        case Mode::NUM:
-          num_encode();
-          break;
-        case Mode::ALNUM:
-          alnum_encode();
-          break;
-        case Mode::BIT8:
-          bit8_encode();
-          break;
-        case Mode::KANJI:
-          kanji_encode();
-          break;
+      case Mode::NUM:
+        num_encode();
+        break;
+      case Mode::ALNUM:
+        alnum_encode();
+        break;
+      case Mode::BIT8:
+        bit8_encode();
+        break;
+      case Mode::KANJI:
+        kanji_encode();
+        break;
       }
     }
-    
+
     void init()
     {
-      if (version < 0)
+      if (version < 0 || level == ECLevel::UNDEF)
       {
         select_qr();
       }
@@ -263,21 +311,22 @@ namespace opqr
       }
       encoded_data.clear();
       function_pattern_pos = tables::make_function_pattern_pos(version,
-                                                               tables::qr_info[version].dimension,
-                                                               tables::qr_info[version].alignment_pos,
-                                                               tables::qr_info[version].nalignment_pos);
+        tables::qr_info[version].dimension,
+        tables::qr_info[version].alignment_pos,
+        tables::qr_info[version].nalignment_pos);
+      inited = true;
     }
-  
+
     void add_term(std::vector<bool> &v)
     {
       int nt = tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] - raw.size();
       if (nt > 4) nt = 4;
       for (int i = 0; i < nt; ++i)
         v.emplace_back(0);
-      
+
       while (v.size() % 8 != 0)
         v.emplace_back(0);
-  
+
       int capacity = tables::qr_info[version].level[to_sz(level)].ndatawords * 8;
       int npadding = (capacity - v.size()) / 8;
       std::vector<bool> padding_bytes;
@@ -286,37 +335,37 @@ namespace opqr
       {
         if (flag)
         {
-          padding_bytes.insert(padding_bytes.end(), {1, 1, 1, 0, 1, 1, 0, 0});
+          padding_bytes.insert(padding_bytes.end(), { 1, 1, 1, 0, 1, 1, 0, 0 });
           flag = false;
         }
         else
         {
-          padding_bytes.insert(padding_bytes.end(), {0, 0, 0, 1, 0, 0, 0, 1});
+          padding_bytes.insert(padding_bytes.end(), { 0, 0, 0, 1, 0, 0, 0, 1 });
           flag = true;
         }
       }
       v.insert(v.end(), std::make_move_iterator(padding_bytes.begin()),
-               std::make_move_iterator(padding_bytes.end()));
+        std::make_move_iterator(padding_bytes.end()));
     }
-    
+
     void num_encode()
     {
-      std::vector<bool> v = {0, 0, 0, 1};
+      std::vector<bool> v = { 0, 0, 0, 1 };
       //Character Count Indicator
       int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-        case 10:
-          add_bits<10>(v, raw.size());
-          break;
-        case 12:
-          add_bits<12>(v, raw.size());
-          break;
-        case 14:
-          add_bits<14>(v, raw.size());
-          break;
+      case 10:
+        add_bits<10>(v, raw.size());
+        break;
+      case 12:
+        add_bits<12>(v, raw.size());
+        break;
+      case 14:
+        add_bits<14>(v, raw.size());
+        break;
       }
-      
+
       for (auto i = 0; i < raw.size(); i += 3)
       {
         if (i + 2 == raw.size())
@@ -337,26 +386,26 @@ namespace opqr
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
-    
-    
+
+
     void alnum_encode()
     {
-      std::vector<bool> v = {0, 0, 1, 0};
+      std::vector<bool> v = { 0, 0, 1, 0 };
       //Character Count Indicator
       int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-        case 9:
-          add_bits<9>(v, raw.size());
-          break;
-        case 11:
-          add_bits<11>(v, raw.size());
-          break;
-        case 13:
-          add_bits<13>(v, raw.size());
-          break;
+      case 9:
+        add_bits<9>(v, raw.size());
+        break;
+      case 11:
+        add_bits<11>(v, raw.size());
+        break;
+      case 13:
+        add_bits<13>(v, raw.size());
+        break;
       }
-      
+
       for (auto i = 0; i < raw.size(); i += 2)
       {
         if (i + 1 == raw.size())
@@ -383,47 +432,47 @@ namespace opqr
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
-    
+
     void bit8_encode()
     {
-      std::vector<bool> v = {0, 1, 0, 0};
+      std::vector<bool> v = { 0, 1, 0, 0 };
       //Character Count Indicator
       int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-        case 8:
-          add_bits<8>(v, raw.size());
-          break;
-        case 16:
-          add_bits<16>(v, raw.size());
-          break;
+      case 8:
+        add_bits<8>(v, raw.size());
+        break;
+      case 16:
+        add_bits<16>(v, raw.size());
+        break;
       }
       for (auto i = 0; i < raw.size(); i++)
         add_bits<8>(v, raw[i]);
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
-    
+
     void kanji_encode()
     {
-      std::vector<bool> v = {1, 0, 0, 0};
+      std::vector<bool> v = { 1, 0, 0, 0 };
       //Character Count Indicator
       int ncci = tables::qr_info[version].nccindicator[to_sz(mode)];
       switch (ncci)
       {
-        case 8:
-          add_bits<8>(v, raw.size() / 2);
-          break;
-        case 10:
-          add_bits<10>(v, raw.size() / 2);
-          break;
-        case 12:
-          add_bits<12>(v, raw.size() / 2);
-          break;
+      case 8:
+        add_bits<8>(v, raw.size() / 2);
+        break;
+      case 10:
+        add_bits<10>(v, raw.size() / 2);
+        break;
+      case 12:
+        add_bits<12>(v, raw.size() / 2);
+        break;
       }
       for (int i = 0; i < raw.size(); i += 2)
       {
-        unsigned int jis = ((unsigned int) raw[i] << 8) | raw[i + 1];
+        unsigned int jis = ((unsigned int)raw[i] << 8) | raw[i + 1];
         if (jis >= 0x8140 && jis <= 0x9ffc)
         {
           jis -= 0x8140;
@@ -466,7 +515,7 @@ namespace opqr
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
     }
-    
+
     void generate_ECBlock()
     {
       ////test
@@ -474,10 +523,10 @@ namespace opqr
       //version = 1;
       //level = ECLevel::H;
       //expected 42 159 74 221 244 169 239 150 138 70 237 85 224 96 74 219 61
-  
+
       std::array<std::byte, 123> ecwork;
-      ecwork.fill(std::byte{0});
-  
+      ecwork.fill(std::byte{ 0 });
+
       int necb_group = tables::qr_info[version].level[to_sz(level)].necb_group;
       auto ecb_group = tables::qr_info[version].level[to_sz(level)].ecb_group;
       auto move = [&ecwork]()
@@ -486,7 +535,7 @@ namespace opqr
         {
           ecwork[m] = ecwork[m + 1];
         }
-        ecwork[122] = std::byte{0};
+        ecwork[122] = std::byte{ 0 };
       };
       auto data_it = encoded_data.begin();
       for (int i = 0; i < necb_group; i++)
@@ -494,20 +543,20 @@ namespace opqr
         int nec_block = ecb_group[i].nec_block;
         int ndatawords = ecb_group[i].ndatawords;
         int necwords = (ecb_group[i].ntotalwords - ecb_group[i].ndatawords);
-        
+
         for (int j = 0; j < nec_block; j++)
         {
-          ecwork.fill(std::byte{0});
+          ecwork.fill(std::byte{ 0 });
           std::copy(data_it, data_it + ndatawords, ecwork.begin());
-          
+
           for (int k = 0; k < ndatawords; k++)
           {
-            if (ecwork[0] == std::byte{0})
+            if (ecwork[0] == std::byte{ 0 })
             {
               move();
               continue;
             }
-  
+
             int e = tables::fac_to_exp[std::to_integer<short>(ecwork[0])];
             move();
             for (int m = 0; m < necwords; ++m)
@@ -519,14 +568,14 @@ namespace opqr
         }
       }
     }
-    
+
     void allocate_data()
     {
       int necb_group = tables::qr_info[version].level[to_sz(level)].necb_group;
       auto ecb_group = tables::qr_info[version].level[to_sz(level)].ecb_group;
       int ndatawords_max = ecb_group[necb_group - 1].ndatawords;
       int necwords_max = ecb_group[necb_group - 1].ntotalwords - ecb_group[necb_group - 1].ndatawords;
-  
+
       for (int i = 0; i < ndatawords_max; i++)
       {
         int pos = i;
@@ -541,7 +590,7 @@ namespace opqr
           }
         }
       }
-      
+
       for (int i = 0; i < necwords_max; i++)
       {
         int pos = i;
@@ -557,32 +606,32 @@ namespace opqr
         }
       }
     }
-    
+
     void fill_function_patterns()
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
       filled.resize(dimension);
-      for (auto &r: filled)
+      for (auto &r : filled)
       {
         r.resize(dimension);
       }
-  
+
       //Position Detection Pattern
       tables::make_pdp_pos(dimension).fill(filled);
       //Alignment Pattern
       tables::make_alignment_pos(tables::qr_info[version].alignment_pos,
-                                 tables::qr_info[version].nalignment_pos,
-                                 dimension).fill(filled);
-  
+        tables::qr_info[version].nalignment_pos,
+        dimension).fill(filled);
+
       //Timing Pattern
       tables::make_timing_pos(dimension).fill(filled);
     }
-  
+
     void fill_data()
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
       pos::Pos pos(dimension - 1, 0);//from (dimension - 1,0)
-      
+
       int delta_y = 1;
       int delta_x = -1;
       auto next = [&pos, &delta_x, &delta_y, &dimension, this]()
@@ -592,7 +641,7 @@ namespace opqr
           pos.x += delta_x;
           if (delta_x > 0) pos.y += delta_y;
           delta_x = -delta_x;
-  
+
           if (pos.y < 0 || pos.y >= dimension)
           {
             pos.y -= delta_y;
@@ -606,14 +655,14 @@ namespace opqr
       dec_to_bin(final_data.cbegin(), final_data.cend(), final_databits);
       //Remainder Bits
       final_databits.insert(final_databits.end(), tables::qr_info[version].remainder_bits, 0);
-      for (auto b: final_databits)
+      for (auto b : final_databits)
       {
         filled[pos.x][pos.y] = b;
         next();
       }
       filled[8][7] = 1;//Dark Module
     }
-    
+
     std::vector<std::vector<bool>> apply_a_mask_pattern(int type)
     {
       std::vector<std::vector<bool>> applied = filled;
@@ -631,13 +680,13 @@ namespace opqr
             continue;
           }
           if ((type == 0 && (i + j) % 2 == 0) ||
-              (type == 1 && i % 2 == 0) ||
-              (type == 2 && j % 3 == 0) ||
-              (type == 3 && (i + j) % 3 == 0) ||
-              (type == 4 && ((i / 2) + (j / 3)) % 2 == 0) ||
-              (type == 5 && (i * j) % 2 + (i * j) % 3 == 0) ||
-              (type == 6 && ((i * j) % 2 + (i * j) % 3) % 2 == 0) ||
-              (type == 7 && ((i * j) % 3 + (i + j) % 2) % 2 == 0))
+            (type == 1 && i % 2 == 0) ||
+            (type == 2 && j % 3 == 0) ||
+            (type == 3 && (i + j) % 3 == 0) ||
+            (type == 4 && ((i / 2) + (j / 3)) % 2 == 0) ||
+            (type == 5 && (i * j) % 2 + (i * j) % 3 == 0) ||
+            (type == 6 && ((i * j) % 2 + (i * j) % 3) % 2 == 0) ||
+            (type == 7 && ((i * j) % 3 + (i + j) % 2) % 2 == 0))
           {
             applied[true_pos.x][true_pos.y].flip();
           }
@@ -645,7 +694,7 @@ namespace opqr
       }
       return applied;
     }
-    
+
     //https://www.jianshu.com/p/cfa2bae198ea
     std::array<std::vector<std::vector<bool>>, 8> apply_all_mask_pattern()
     {
@@ -656,13 +705,13 @@ namespace opqr
       }
       return applies;
     }
-    
+
     std::array<int, 8> evaluate_mask_pattern(const std::array<std::vector<std::vector<bool>>, 8> &applies)
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
       std::array<int, 8> penalties;
       std::size_t penalties_pos = 0;
-      for (auto &app: applies)
+      for (auto &app : applies)
       {
         int penalty = 0;
         //1
@@ -711,8 +760,8 @@ namespace opqr
           for (int j = 1; j < dimension - 1; ++j)
           {
             if (app[i][j] == app[i][j + 1]
-                && app[i][j] == app[i + 1][j + 1]
-                && app[i][j] == app[i + 1][j])
+              && app[i][j] == app[i + 1][j + 1]
+              && app[i][j] == app[i + 1][j])
             {
               penalty += 3;
             }
@@ -723,7 +772,7 @@ namespace opqr
         {
           auto check_11311 = [&dimension, &app, &i]() -> bool
           {
-            std::array<int, 5> arr{-1, -1, -1, -1, -1};
+            std::array<int, 5> arr{ -1, -1, -1, -1, -1 };
             std::size_t pos = 0;
             for (int j = 0; j < dimension; ++j)
             {
@@ -768,14 +817,14 @@ namespace opqr
           }
         }
         penalty += std::abs(long(black * 100 / (dimension * dimension) - 50)) / 5 * 10;
-        
+
         //end
         penalties[penalties_pos] = penalty;
         ++penalties_pos;
       }
       return penalties;
     }
-    
+
     void select_mask_pattern_to_final_qr()
     {
       if (mask == -1)
@@ -796,7 +845,7 @@ namespace opqr
         final_qr = std::move(apply_a_mask_pattern(mask));
       }
     }
-    
+
     void fill_format_infomation()
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
@@ -813,11 +862,11 @@ namespace opqr
       }
       fmt = ((fmt << 10) + modulo) ^ 0x5412;//0x5412 == 101010000010010 to ensure that result data is not all 0
       std::bitset<15> format_bits(fmt);
-      auto[fpb1, fpb2] = tables::make_format_pos(dimension);
-      fpb1.fill_rev(final_qr, format_bits);
-      fpb2.fill_rev(final_qr, format_bits);
+      auto [fpb1, fpb2] = tables::make_format_pos(dimension);
+      fpb1.fill(final_qr, format_bits);
+      fpb2.fill(final_qr, format_bits);
       //Version Infomation
-      auto[vpb1, vpb2] = tables::make_version_pos(dimension);
+      auto [vpb1, vpb2] = tables::make_version_pos(dimension);
       vpb1.fill(final_qr, tables::version_info[version]);
       vpb2.fill(final_qr, tables::version_info[version]);
     }

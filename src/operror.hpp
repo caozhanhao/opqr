@@ -26,7 +26,8 @@ namespace opqr::error
   {
   public:
     Error(std::string location, std::string func_name, std::string details)
-        : std::runtime_error("In File: " + location + ":" + func_name + "(): \n" + details) {}
+      : std::runtime_error("\n\033[31mError\033[0m : In File: " + location +
+        ":\033[33m" + func_name + "\033[0m(): \n\033[37m" + details + "\033[0m") {}
   };
 }
 #endif
