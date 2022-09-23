@@ -14,16 +14,20 @@
 #ifndef OPQR_OPQR_HPP
 #define OPQR_OPQR_HPP
 #include <vector>
+#include <array>
 #include <bitset>
 #include <cstddef>
 #include <charconv>
 #include <algorithm>
+#include <functional>
 #include <array>
 #include "optables.hpp"
 #include "oppic.hpp"
 #include "operror.hpp"
-#include "oppos.hpp"
-//void text_debug(std::vector<std::vector<bool>>& s)
+#include "oputils.hpp"
+
+//#include <iostream>
+//void text_debug(const std::vector<std::vector<bool>>& s)
 //{
 //  for (int i = s.size()-1 ; i >=0; --i)
 //  {
@@ -37,13 +41,14 @@
 //    std::cout << std::endl;
 //  }
 //}
-//void pic_debug(std::vector<std::vector<bool>>& s, std::string name = "test.ppm")
+//void pic_debug(const std::vector<std::vector<bool>>& s, std::string name = "test.bmp")
 //{
-//  op::pic::Pic pic(s);
+//  opqr::pic::Pic pic(s);
 //  auto f = std::ofstream(std::move(name));
-//  pic.paint(f);
+//  pic.paint(opqr::pic::Format::BMP, f, 10);
+//  f.close();
 //}
-//void fill_box_debug(std::vector<std::vector<bool>>& s, int ik)
+//void fill_box_debug(const std::vector<std::vector<bool>>& s, int ik)
 //{
 //  for(auto& i : s)
 //  {
@@ -53,7 +58,7 @@
 //    }
 //  }
 //}
-//void check_vec_debug(std::vector<bool> vec)
+//void check_vec_debug(const std::vector<bool> vec)
 //{
 //  int n = 0;
 //  for (int i = 0; i < vec.size(); ++i)
@@ -149,7 +154,7 @@ namespace opqr
     std::vector<std::byte> ec_data;
     std::vector<std::byte> final_data;
     std::vector<std::vector<bool>> filled;
-    pos::PosSet function_pattern_pos;
+    utils::PosSet function_pattern_pos;
   public:
     QR(int version_ = -1, ECLevel level_ = ECLevel::UNDEF, Mode mode_ = Mode::BIT8, int mask_ = -1)
       : version(version_), level(level_), mode(mode_), mask(mask_), inited(false)
@@ -173,21 +178,25 @@ namespace opqr
     QR &set_mode(Mode mode_)
     {
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set mode after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mode after adding data.");
       mode = mode_;
       return *this;
     }
 
     QR &set_mask(int m)
     {
+      if (m < 0 || m > 7)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Mask '" + std::to_string(m) + "'.");
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set mask after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mask after adding data.");
       mask = m;
       return *this;
     }
 
     QR &set_version(int v)
     {
+      if (v < 1 || v > 40)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Version '" + std::to_string(v) + "'.");
       if (inited)
         throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set version after adding data.");
       version = v;
@@ -196,8 +205,10 @@ namespace opqr
 
     QR &set_level(ECLevel l)
     {
+      if(l == ECLevel::UNDEF)
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Error correction Level 'UNDEF'.");
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set level after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Error correction Level after adding data.");
       level = l;
       return *this;
     }
@@ -415,7 +426,7 @@ namespace opqr
           {
             throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is not Alphanumeric.");
           }
-          add_bits<11>(v, w);
+          add_bits<6>(v, w);
           break;
         }
         else
@@ -630,7 +641,7 @@ namespace opqr
     void fill_data()
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
-      pos::Pos pos(dimension - 1, 0);//from (dimension - 1,0)
+      utils::Pos pos(dimension - 1, 0);//from (dimension - 1,0)
 
       int delta_y = 1;
       int delta_x = -1;
@@ -671,7 +682,7 @@ namespace opqr
       {
         for (int j = 0; j < dimension; j++)
         {
-          pos::Pos true_pos(j, dimension - i - 1);
+          utils::Pos true_pos(j, dimension - i - 1);
           //According to the QR Spec, (i, j) = (0, 0) is in the top left module in the symbol.
           //https://files-cdn.cnblogs.com/files/elaron/qr_code.pdf
           //but this (0,0) is in the bottom left
@@ -767,55 +778,27 @@ namespace opqr
             }
           }
         }
-        //3
-        for (int i = 0; i < dimension; ++i)
+        //3 11311
+        constexpr std::array<bool, 11> pattern{ 1,0,1,1,1,0,1,0,0,0,0 };
+        for (std::size_t i = 0; i < dimension; ++i)
         {
-          auto check_11311 = [&dimension, &app, &i]() -> bool
-          {
-            std::array<int, 5> arr{ -1, -1, -1, -1, -1 };
-            std::size_t pos = 0;
-            for (int j = 0; j < dimension; ++j)
-            {
-              if (j == 0)
-              {
-                if (app[i][j])
-                {
-                  arr[pos] = 1;
-                  continue;
-                }
-                else
-                  return false;//the first must be black 
-              }
-              if (app[i][j] == app[i][j - 1])
-                ++arr[pos];
-              else
-              {
-                while (pos < 5 && arr[pos] != -1)pos++;
-                if (pos == 5)
-                {
-                  if (arr[0] == arr[1] && arr[1] * 3 == arr[2] && arr[1] == arr[3] && arr[1] == arr[4])
-                    return true;
-                  else
-                    return false;
-                }
-                else
-                  arr[pos] = 1;
-              }
-            }
-            return false;
-          };
-          if (check_11311())
+          auto it = std::search(app[i].cbegin(), app[i].cend(),
+            std::default_searcher(pattern.cbegin(), pattern.cend()));
+          if (it != app[i].cend())
+            penalty += 40;
+        }
+        for (std::size_t i = 0; i < dimension; ++i)
+        {
+          auto it = std::search(utils::xcbegin(app, i),
+            utils::xcend(app, i),
+            std::default_searcher(pattern.cbegin(), pattern.cend()));
+          if (it != utils::xcend(app, i))
             penalty += 40;
         }
         //4
         int black = 0;
-        for (int i = 0; i < dimension; ++i)
-        {
-          for (int j = 0; j < dimension; ++j)
-          {
-            if (app[i][j])++black;
-          }
-        }
+        for (auto &r : app)
+          black += std::count(r.begin(), r.end(), true);
         penalty += std::abs(long(black * 100 / (dimension * dimension) - 50)) / 5 * 10;
 
         //end
@@ -829,21 +812,14 @@ namespace opqr
     {
       if (mask == -1)
       {
-        std::size_t bestmask = 0;
         auto applies = std::move(apply_all_mask_pattern());
         auto penalties = evaluate_mask_pattern(applies);
-        for (size_t i = 0; i < 8; i++)
-        {
-          if (penalties[i] < penalties[bestmask])
-            bestmask = i;
-        }
-        mask = bestmask;
+        auto it = std::min_element(penalties.begin(), penalties.end());
+        mask = it - penalties.begin();
         final_qr = applies[mask];
       }
       else
-      {
         final_qr = std::move(apply_a_mask_pattern(mask));
-      }
     }
 
     void fill_format_infomation()
@@ -866,9 +842,12 @@ namespace opqr
       fpb1.fill(final_qr, format_bits);
       fpb2.fill(final_qr, format_bits);
       //Version Infomation
-      auto [vpb1, vpb2] = tables::make_version_pos(dimension);
-      vpb1.fill(final_qr, tables::version_info[version]);
-      vpb2.fill(final_qr, tables::version_info[version]);
+      if (version >= 7)
+      {
+        auto [vpb1, vpb2] = tables::make_version_pos(dimension);
+        vpb1.fill(final_qr, tables::version_info[version]);
+        vpb2.fill(final_qr, tables::version_info[version]);
+      }
     }
   };
 }
