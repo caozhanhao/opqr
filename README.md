@@ -1,6 +1,6 @@
 # opqr
 [![License](https://img.shields.io/github/license/caozhanhao/opqr?style=flat-square)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/caozhanhao/opqr?style=flat-square)](releases)
+[![Release](https://img.shields.io/github/v/release/caozhanhao/opqr?style=flat-square)](https://github.com/caozhanhao/opqr/releases)
 ![Language](https://img.shields.io/github/languages/top/caozhanhao/opqr?style=flat-square)
 ## Introduction
 - A Simple C++ header-only QR encode Library.
