@@ -14,6 +14,8 @@
 #ifndef OPQR_OPQR_HPP
 #define OPQR_OPQR_HPP
 #include <vector>
+#include <type_traits>
+#include <variant>
 #include <array>
 #include <bitset>
 #include <cstddef>
@@ -78,7 +80,7 @@ namespace opqr
 {
   enum class ECLevel : std::size_t
   {
-    L = 0, M, Q, H, UNDEF
+    L = 0, M, Q, H, AUTO
   };
   enum class Mode : std::size_t
   {
@@ -86,6 +88,7 @@ namespace opqr
     ALNUM,
     BIT8,
     KANJI,
+    AUTO
   };
 
   void bin_to_dec(const std::vector<bool>::const_iterator first, const std::vector<bool>::const_iterator last,
@@ -148,6 +151,7 @@ namespace opqr
     std::vector<std::vector<bool>> final_qr;
     std::string raw;
     int mask;
+    bool quiet_zone;
   private:
     bool inited;
     std::vector<std::byte> encoded_data;
@@ -156,29 +160,52 @@ namespace opqr
     std::vector<std::vector<bool>> filled;
     utils::PosSet function_pattern_pos;
   public:
-    QR(int version_ = -1, ECLevel level_ = ECLevel::UNDEF, Mode mode_ = Mode::BIT8, int mask_ = -1)
-      : version(version_), level(level_), mode(mode_), mask(mask_), inited(false)
+    QR(int version_ = -1, ECLevel level_ = ECLevel::AUTO, Mode mode_ = Mode::AUTO, int mask_ = -1)
+      : version(version_), level(level_), mode(mode_), mask(mask_), inited(false), quiet_zone(true)
     {}
-
-    QR(std::string data)
-      : version(-1), mask(-1), level(ECLevel::UNDEF), mode(Mode::BIT8), inited(false)
+    template<typename T, typename = std::enable_if_t<!std::is_base_of_v<QR, std::decay_t<T>>>>
+    QR(T &&data)
+      : version(-1), mask(-1), level(ECLevel::AUTO), mode(Mode::AUTO), inited(false), quiet_zone(true)
     {
-      add_data(std::move(data));
+      add_data(std::forward<T>(data));
+    }
+    template <typename T, typename =
+      std::enable_if_t<std::is_integral_v<T>>>
+    QR &add_data(const T &data)
+    {
+      return add_data(std::to_string(data));
+    }
+    template <typename T, typename =
+      std::enable_if_t<!std::is_same_v<std::string, std::decay_t<T>>
+      &&std::is_integral_v<T::value_type>>>
+      QR &add_data(T &&data)
+    {
+      std::string str;
+      for (auto &r : data)
+        str += std::to_string(r);
+      return add_data(str);
     }
 
+    template <typename T, typename =
+      std::enable_if_t<std::is_integral_v<T>>>
+    QR &add_data(const std::initializer_list<T> &data)
+    {
+      std::string str;
+      for (auto &r : data)
+        str += std::to_string(r);
+      return add_data(str);
+    }
     QR &add_data(std::string data)
     {
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not add data twice.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not add data after generating.");
       raw = std::move(data);
-      init();
       return *this;
     }
-
     QR &set_mode(Mode mode_)
     {
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mode after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mode after generating.");
       mode = mode_;
       return *this;
     }
@@ -188,7 +215,7 @@ namespace opqr
       if (m < 0 || m > 7)
         throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Mask '" + std::to_string(m) + "'.");
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mask after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Mask after generating.");
       mask = m;
       return *this;
     }
@@ -198,15 +225,13 @@ namespace opqr
       if (v < 1 || v > 40)
         throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Version '" + std::to_string(v) + "'.");
       if (inited)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set version after adding data.");
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set version after generating.");
       version = v;
       return *this;
     }
 
     QR &set_level(ECLevel l)
     {
-      if(l == ECLevel::UNDEF)
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Invalid Error correction Level 'UNDEF'.");
       if (inited)
         throw error::Error(OPQR_ERROR_LOCATION, __func__, "Can not set Error correction Level after adding data.");
       level = l;
@@ -231,6 +256,7 @@ namespace opqr
 
     pic::Pic generate()
     {
+      init();
       data_encode();
       generate_ECBlock();
       allocate_data();
@@ -238,13 +264,56 @@ namespace opqr
       fill_data();
       select_mask_pattern_to_final_qr();
       fill_format_infomation();
+      if (quiet_zone)
+        add_quiet_zone();
       return pic::Pic(final_qr);
     }
 
+    QR &disable_quiet_zone()
+    {
+      quiet_zone = false;
+      return *this;
+    }
   private:
     void select_qr()
     {
-      if (level == ECLevel::UNDEF && version == -1)
+      if (mode == Mode::AUTO)
+      {
+        bool is_num = true;
+        bool is_alnum = true;
+        bool is_kanji = false;
+        for (auto &r : raw)
+        {
+          if (!std::isdigit(r)) is_num = false;
+          if (!std::isalnum(r) || std::islower(r)) is_alnum = false;
+        }
+        if (!is_num && !is_alnum && raw.size() % 2 == 0)
+        {
+          is_kanji = true;
+          int p = 0;
+          for (std::size_t i = 0; i < raw.size(); i += 2)
+          {
+            unsigned char a = static_cast<unsigned char>(raw[i]);
+            unsigned char b = static_cast<unsigned char>(raw[i + 1]);
+            if (!(a >= 0x81 && a <= 0x9f) && !(a >= 0xe0 && a <= 0xea))
+            {
+              is_kanji = false;
+              break;
+            }
+            if (!(b >= 0x40 && b <= 0xfc))
+            {
+              is_kanji = false;
+              break;
+            }
+          }
+        }
+        if (is_num) mode = Mode::NUM;
+        else if (is_alnum) mode = Mode::ALNUM;
+        else if (is_kanji) mode = Mode::KANJI;
+        else mode = Mode::BIT8;
+      }
+
+      if (level == ECLevel::AUTO && version == -1)
       {
         int l;
         for (l = 3; l >= 0; --l)
@@ -268,7 +337,7 @@ namespace opqr
         }
         level = to_ecl(l);
       }
-      else if (level != ECLevel::UNDEF)//version == -1
+      else if (level != ECLevel::AUTO)//version == -1
       {
         version = 1;
         while (version < 41 && tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] < raw.size())
@@ -312,7 +381,7 @@ namespace opqr
 
     void init()
     {
-      if (version < 0 || level == ECLevel::UNDEF)
+      if (version < 0 || level == ECLevel::AUTO)
       {
         select_qr();
       }
@@ -481,47 +550,32 @@ namespace opqr
         add_bits<12>(v, raw.size() / 2);
         break;
       }
-      for (int i = 0; i < raw.size(); i += 2)
+      for (std::size_t i = 0; i < raw.size(); i += 2)
       {
-        unsigned int jis = ((unsigned int)raw[i] << 8) | raw[i + 1];
-        if (jis >= 0x8140 && jis <= 0x9ffc)
+        unsigned char a = static_cast<unsigned char>(raw[i]);
+        unsigned char b = static_cast<unsigned char>(raw[i + 1]);
+        std::uint16_t character = a << 8 | b & 0xff;
+        if (character >= 0x8140 && character <= 0x9ffc)
         {
-          jis -= 0x8140;
-          unsigned int h = jis >> 8;
-          unsigned int l = jis & 0xff;
-          h *= 0xc0;
-          add_bits<13>(v, h + l);
+          character -= 0x8140;
+          character = (character >> 8) * 0xc0 + (character & 0xff);
         }
-        else if (jis >= 0xe040 && jis <= 0xebbf)
+        else if (character >= 0xe040 && character <= 0xebbf)
         {
-          jis -= 0xc140;
-          unsigned int h = jis >> 8;
-          unsigned int l = jis & 0xff;
-          h *= 0xc0;
-          add_bits<13>(v, h + l);
+          character -= 0xc140;
+          character = (character >> 8) * 0xc0 + (character & 0xff);
         }
-        else if (jis >= 0xa1 && jis <= 0xaa)
+        else if (a > 0xa1 && a < 0xaa)
         {
-          unsigned int h = jis >> 8;
-          unsigned int l = jis & 0xff;
-          h -= 0xa1;
-          l -= 0xa1;
-          h *= 0x60;
-          add_bits<13>(v, h + l);
+          character = (a - 0xa1) * 0x60 + b - 0xa1;
         }
-        else if (jis >= 0xb0 && jis <= 0xfa)
+        else if (a > 0xb0 && a < 0xfa)
         {
-          unsigned int h = jis >> 8;
-          unsigned int l = jis & 0xff;
-          h -= 0xa6;
-          l -= 0xa1;
-          h *= 0x60;
-          add_bits<13>(v, h + l);
+          character = (a - 0xa6) * 0x60 + b - 0xa1;
         }
         else
-        {
           throw error::Error(OPQR_ERROR_LOCATION, __func__, "The data is not Kanji.");
-        }
+        add_bits<13>(v, character);
       }
       add_term(v);
       bin_to_dec(v.cbegin(), v.cend(), encoded_data);
@@ -847,6 +901,17 @@ namespace opqr
         auto [vpb1, vpb2] = tables::make_version_pos(dimension);
         vpb1.fill(final_qr, tables::version_info[version]);
         vpb2.fill(final_qr, tables::version_info[version]);
+      }
+    }
+    void add_quiet_zone()
+    {
+      const std::size_t dimension = tables::qr_info[version].dimension;
+      final_qr.insert(final_qr.begin(), 4, std::vector<bool>(dimension, 0));
+      final_qr.insert(final_qr.end(), 4, std::vector<bool>(dimension, 0));
+      for (auto &r : final_qr)
+      {
+        r.insert(r.begin(), 4, 0);
+        r.insert(r.end(), 4, 0);
       }
     }
   };
