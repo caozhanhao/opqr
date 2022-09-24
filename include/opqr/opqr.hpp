@@ -177,7 +177,7 @@ namespace opqr
     }
     template <typename T, typename =
       std::enable_if_t<!std::is_same_v<std::string, std::decay_t<T>>
-      &&std::is_integral_v<T::value_type>>>
+      &&std::is_integral_v<typename T::value_type>>>
       QR &add_data(T &&data)
     {
       std::string str;

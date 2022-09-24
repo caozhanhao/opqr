@@ -160,7 +160,21 @@ namespace opqr::utils
       ++it;
       return *this;
     }
-
+    XIterator &operator+=(difference_type d)
+    {
+      it += d;
+      return *this;
+    }
+    XIterator &operator-=(difference_type d)
+    {
+      it -= d;
+      return *this;
+    }
+    XIterator &operator--()
+    {
+      --it;
+      return *this;
+    }
     difference_type operator-(const XIterator &other) const
     {
       return it - other.it;
@@ -189,12 +203,12 @@ namespace opqr::utils
   template<typename T>
   XIterator<typename T::iterator> xbegin(T &v, std::size_t delta)
   {
-    return XIterator<T::iterator>(v.begin(), delta);
+    return XIterator<typename T::iterator>(v.begin(), delta);
   }
   template<typename T>
   XIterator<typename T::iterator> xend(T &v, std::size_t delta)
   {
-    return XIterator<T::iterator>(v.end(), delta);
+    return XIterator<typename T::iterator>(v.end(), delta);
   }
 }
 #endif
