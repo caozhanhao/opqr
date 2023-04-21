@@ -114,15 +114,17 @@ namespace opqr
         dest.emplace_back(bits[7 - j]);
     }
   }
-
+  
   template<std::size_t S>
-  void add_bits(std::vector<bool> &v, int a)
+  void add_bits(std::vector<bool> &v, std::size_t a)
   {
     std::bitset<S> bits(a);
     for (int i = S - 1; i >= 0; --i)
+    {
       v.emplace_back(bits[i]);
+    }
   }
-
+  
   ECLevel to_ecl(std::size_t l)
   {
     return static_cast<ECLevel>(l);
@@ -399,16 +401,16 @@ namespace opqr
 
     void add_term(std::vector<bool> &v)
     {
-      int nt = tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] - raw.size();
+      std::size_t nt = tables::qr_info[version].level[to_sz(level)].capacity[to_sz(mode)] - raw.size();
       if (nt > 4) nt = 4;
       for (int i = 0; i < nt; ++i)
         v.emplace_back(0);
 
       while (v.size() % 8 != 0)
         v.emplace_back(0);
-
+  
       int capacity = tables::qr_info[version].level[to_sz(level)].ndatawords * 8;
-      int npadding = (capacity - v.size()) / 8;
+      std::size_t npadding = (capacity - v.size()) / 8;
       std::vector<bool> padding_bytes;
       bool flag = true;
       for (int i = 0; i < npadding; ++i)
@@ -850,7 +852,7 @@ namespace opqr
             penalty += 40;
         }
         //4
-        int black = 0;
+        std::size_t black = 0;
         for (auto &r : app)
           black += std::count(r.begin(), r.end(), true);
         penalty += std::abs(long(black * 100 / (dimension * dimension) - 50)) / 5 * 10;
@@ -869,7 +871,7 @@ namespace opqr
         auto applies = std::move(apply_all_mask_pattern());
         auto penalties = evaluate_mask_pattern(applies);
         auto it = std::min_element(penalties.begin(), penalties.end());
-        mask = it - penalties.begin();
+        mask = static_cast<int>(it - penalties.begin());
         final_qr = applies[mask];
       }
       else
@@ -880,7 +882,7 @@ namespace opqr
     {
       const std::size_t dimension = tables::qr_info[version].dimension;
       //Format infomation
-      int fmt = ((to_sz(level) ^ 1) << 3) | mask;
+      int fmt = static_cast<int>(((to_sz(level) ^ 1) << 3) | mask);
       int modulo = fmt << 10;
       for (int i = 14; i >= 10; i--)
       {

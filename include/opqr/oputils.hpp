@@ -23,15 +23,15 @@ namespace opqr::utils
   class Pos
   {
   public:
-    int x;
-    int y;
+    std::size_t x;
+    std::size_t y;
   public:
     Pos(std::size_t x_, std::size_t y_)
-      : x(x_), y(y_) {}
-
+        : x(x_), y(y_) {}
+  
     Pos(std::array<std::size_t, 2> s)
-      : x(s[0]), y(s[1]) {}
-
+        : x(s[0]), y(s[1]) {}
+  
     Pos() : x(0), y(0) {}
   };
 
@@ -69,9 +69,9 @@ namespace opqr::utils
     {
       Pos t1(std::min(p1.x, p2.x), std::min(p1.y, p2.y));
       Pos t2(std::max(p1.x, p2.x), std::max(p1.y, p2.y));
-      for (int i = t1.x; i <= t2.x; i++)
+      for (std::size_t i = t1.x; i <= t2.x; i++)
       {
-        for (int j = t1.y; j <= t2.y; j++)
+        for (std::size_t j = t1.y; j <= t2.y; j++)
         {
           box.emplace_back(Pos(i, j));
         }
@@ -108,9 +108,9 @@ namespace opqr::utils
     {
       Pos t1(std::min(p1.x, p2.x), std::min(p1.y, p2.y));
       Pos t2(std::max(p1.x, p2.x), std::max(p1.y, p2.y));
-      for (int i = t1.x; i <= t2.x; i++)
+      for (std::size_t i = t1.x; i <= t2.x; i++)
       {
-        for (int j = t1.y; j <= t2.y; j++)
+        for (std::size_t j = t1.y; j <= t2.y; j++)
         {
           box.insert(Pos(i, j));
         }

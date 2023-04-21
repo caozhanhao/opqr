@@ -60,15 +60,15 @@ namespace opqr::pic
         uint8_t bytes[4];
         uint32_t value;
       };
-
+  
       LITTLE l_width, l_height, l_bfSize, l_biSizeImage;
-      uint32_t width = data.size() * size;
-      uint32_t height = data.size() * size;
-
+      uint32_t width = static_cast<uint32_t>(data.size() * size);
+      uint32_t height = static_cast<uint32_t>(data.size() * size);
+  
       uint32_t width_r = (width * 24 / 8 + 3) / 4 * 4;
       uint32_t bf_size = width_r * height + 54 + 2;
       uint32_t bi_size_image = width_r * height;
-
+  
       l_width.value = width;
       l_height.value = height;
       l_bfSize.value = bf_size;
@@ -107,7 +107,7 @@ namespace opqr::pic
               fs.put(color).put(color).put(color);
             }
           }
-          for (int j = 0; j < width_r - width * 3; j++)
+          for (std::size_t j = 0; j < width_r - width * 3; j++)
           {
             fs.put(0);
           }
@@ -120,7 +120,7 @@ namespace opqr::pic
     void paint_ppm(std::ofstream &fs, std::size_t size)
     {
       fs << "P1\n" << data.size() * size << " " << data[0].size() * size << "\n";
-      for (int i = data.size() - 1; i >= 0; --i)
+      for (int i = static_cast<int>(data.size() - 1); i >= 0; --i)
       {
         for (int l = 0; l < size; ++l)
         {

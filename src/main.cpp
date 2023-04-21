@@ -23,14 +23,14 @@ int main()
    */
   //1 constructor
   QR qr1("https://github.com/caozhanhao/opqr");
-  QR qr2(std::vector{0, 1, 2, 3});//or other containers, e.g. std::list
+  QR qr2(std::vector<int>{0, 1, 2, 3});//or other containers, e.g. std::list
   //2 add_data()
   QR qr3;
   QR qr4;
-  qr3.add_data({ 4,5,6,7 });// initializer_list
+  qr3.add_data({4, 5, 6, 7});// initializer_list
   qr4.add_data(789);// integral value
-
-
+  
+  
   /*
    *  Specify
    */
