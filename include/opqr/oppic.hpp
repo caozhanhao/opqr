@@ -13,128 +13,138 @@
 //   limitations under the License.
 #ifndef OPQR_OPPIC_HPP
 #define OPQR_OPPIC_HPP
+
 #include "operror.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+//#define STBI_ONLY_PNM
+#include "stb/stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include "stb/stb_image_write.h"
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+
+#include "stb/stb_image_resize.h"
+
 #include <vector>
 #include <fstream>
+
 namespace opqr::pic
 {
   enum class Format
   {
-    BMP, PPM
+    JPG, PNG, TGA, BMP
   };
-
+  
   class Pic
   {
   private:
+    struct StbData
+    {
+      int width;
+      int height;
+      int channels;
+      stbi_uc *data;
+    };
+  private:
     std::vector<std::vector<bool>> data;
-
+  
   public:
     Pic(std::vector<std::vector<bool>> data_)
-      : data(std::move(data_)) {}
-
-    void paint(Format fmt, std::string path, std::size_t size = 1)
+        : data(std::move(data_)) {}
+    
+    void paint(Format fmt, const std::string &path, size_t width, size_t height) const
     {
-      std::ofstream fs(std::move(path));
-      paint(fmt, fs, size);
+      size_t enlarge = (std::max(width, height) / data.size()) - 1;
+      auto pic = load_pic(enlarge);
+      auto out = (unsigned char *) malloc(width * height * pic.channels * 1.5);
+      int ret = stbir_resize_uint8(pic.data, pic.width, pic.height, 0, out, width, height, 0, pic.channels);
+      if (ret == 0)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, std::string("resize failed: ") + stbi_failure_reason());
+      }
+      stbi_image_free(pic.data);
+      pic.data = out;
+      pic.width = width;
+      pic.height = height;
+      write_pic(fmt, path, pic);
+      stbi_image_free(out);
     }
-    void paint(Format fmt, std::ofstream &fs, std::size_t size = 1)
+    
+    void paint(Format fmt, const std::string &path, size_t enlarge = 1) const
     {
-      if (!fs.good())
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Failed reading file.");
+      auto pic = load_pic(enlarge);
+      write_pic(fmt, path, pic);
+      stbi_image_free(pic.data);
+    }
+  
+  private:
+    void write_pic(Format fmt, const std::string &path, StbData data) const
+    {
+      int ret = 0;
       switch (fmt)
       {
-      case Format::BMP:
-        paint_bmp(fs, size);
-        break;
-      case Format::PPM:
-        paint_ppm(fs, size);
-        break;
+        case Format::JPG:
+          ret = stbi_write_jpg(path.c_str(), data.width, data.height, data.channels, data.data, 100);
+          break;
+        case Format::PNG:
+          ret = stbi_write_png(path.c_str(), data.width, data.height, data.channels, data.data, 0);
+          break;
+        case Format::TGA:
+          ret = stbi_write_tga(path.c_str(), data.width, data.height, data.channels, data.data);
+          break;
+        case Format::BMP:
+          ret = stbi_write_bmp(path.c_str(), data.width, data.height, data.channels, data.data);
+          break;
+      }
+      if (ret == 0)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, std::string("write failed: ") + stbi_failure_reason());
       }
     }
-
-  private:
-    void paint_bmp(std::ofstream &fs, std::size_t size)
+    
+    StbData load_pic(size_t enlarge) const
     {
-      union LITTLE
+      if (enlarge == 0)
       {
-        uint8_t bytes[4];
-        uint32_t value;
-      };
-  
-      LITTLE l_width, l_height, l_bfSize, l_biSizeImage;
-      uint32_t width = static_cast<uint32_t>(data.size() * size);
-      uint32_t height = static_cast<uint32_t>(data.size() * size);
-  
-      uint32_t width_r = (width * 24 / 8 + 3) / 4 * 4;
-      uint32_t bf_size = width_r * height + 54 + 2;
-      uint32_t bi_size_image = width_r * height;
-  
-      l_width.value = width;
-      l_height.value = height;
-      l_bfSize.value = bf_size;
-      l_biSizeImage.value = bi_size_image;
-
-      std::array<unsigned char, 54> header
-      {
-          0x42, 0x4d,
-          l_bfSize.bytes[0], l_bfSize.bytes[1], l_bfSize.bytes[2], l_bfSize.bytes[3],
-          0, 0, 0, 0,
-          54, 0, 0, 0,
-          40, 0, 0, 0,
-          l_width.bytes[0], l_width.bytes[1], l_width.bytes[2], l_width.bytes[3],
-          l_height.bytes[0], l_height.bytes[1], l_height.bytes[2], l_height.bytes[3],
-          1, 0,
-          24, 00,
-          0, 0, 0, 0,
-          l_biSizeImage.bytes[0], l_biSizeImage.bytes[1], l_biSizeImage.bytes[2], l_biSizeImage.bytes[3],
-          0, 0, 0, 0,
-          0, 0, 0, 0,
-          0, 0, 0, 0,
-          0, 0, 0, 0
-      };
-
-      fs.write(reinterpret_cast<char *>(header.data()), header.size());
-
-      for (int i = 0; i < data.size(); i++)
-      {
-        for (int k = 0; k < size; ++k)
-        {
-          for (int j = 0; j < data.size(); j++)
-          {
-            int color = data[j][i] ? 0 : 255;
-            for (int l = 0; l < size; ++l)
-            {
-              fs.put(color).put(color).put(color);
-            }
-          }
-          for (std::size_t j = 0; j < width_r - width * 3; j++)
-          {
-            fs.put(0);
-          }
-        }
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "enlarge must >= 1.");
       }
-      fs.put(0).put(0);
-      fs.close();
-    }
-
-    void paint_ppm(std::ofstream &fs, std::size_t size)
-    {
-      fs << "P1\n" << data.size() * size << " " << data[0].size() * size << "\n";
+      
+      std::vector<stbi_uc> raw_ppm{'P', '5', ' '};
+      size_t pgm_size = data.size() * enlarge;
+      std::string pgm_header = std::to_string(pgm_size) + " " + std::to_string(pgm_size) + " 255 ";
+      for (auto &r: pgm_header)
+      {
+        raw_ppm.emplace_back(r);
+      }
+      
       for (int i = static_cast<int>(data.size() - 1); i >= 0; --i)
       {
-        for (int l = 0; l < size; ++l)
+        for (int l = 0; l < enlarge; ++l)
         {
-          for (int j = 0; j < data[i].size(); ++j)
+          for (int j = 0; j < data.size(); ++j)
           {
-            for (int k = 0; k < size; ++k)
+            for (int k = 0; k < enlarge; ++k)
             {
-              fs << data[j][i] << "\n";
+              raw_ppm.emplace_back(data[j][i] ? 0 : 255);
             }
           }
-          fs << "\n";
         }
       }
-      fs.close();
+      
+      int w, h, n;
+      auto pgm_data = stbi_load_from_memory(raw_ppm.data(), static_cast<int>(raw_ppm.size()), &w, &h, &n, 0);
+      if (w != pgm_size || h != pgm_size)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unexpected error when generating pgm.");
+      }
+      if (!pgm_data)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, std::string("load pgm failed: ") + stbi_failure_reason());
+      }
+      return {w, h, n, pgm_data};
     }
   };
 }

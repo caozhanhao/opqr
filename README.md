@@ -2,7 +2,7 @@
 [![License](https://img.shields.io/github/license/caozhanhao/opqr?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/caozhanhao/opqr?style=flat-square)](https://github.com/caozhanhao/opqr/releases)
 ![Language](https://img.shields.io/github/languages/top/caozhanhao/opqr?style=flat-square)
-## Introduction
+## Intro
 - A Simple C++ header-only QR encode Library.
 ## Usage
 You can also see these examples in [main.cpp](src/main.cpp)
@@ -35,17 +35,44 @@ qr.set_level(ECLevel::L);
 qr.set_mode(Mode::NUM);
 qr.set_mask(6);
 ```
+
 ### Quiet Zone
+
 ```c++
 qr.disable_quiet_zone();
 ```
+
 ### Output
-- paint(format, filename, size)
-- the image size = dimension * size x dimension * size
+
+#### Support Format
+
+- JPG
+- PNG
+- TGA
+- BMP
+
+#### paint(format, filename, enlarge)
+
+- the image size = dimension * enlarge x dimension * enlarge
+
+#### paint(format, filename, width, height)
+
+- the image size = width x height
+
 ```c++
 qr.generate().paint(pic::Format::BMP, "example.bmp", 10);
+qr.generate().paint(pic::Format::PNG, "example.bmp", 1024, 1024);
 ```
+
 ## Note
+
 - There may be bugs in Kanji Mode
+
+## Dependency
+
+- [stb](https://github.com/nothings/stb) (also header-only)
+- C++ 17
+
 ## Reference
+
 [二维码生成原理](https://zhuanlan.zhihu.com/p/543574464)

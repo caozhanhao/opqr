@@ -54,13 +54,18 @@ int main()
   /*
    *  Output
    */
-  //1 PPM
-  qr1.generate().paint(pic::Format::PPM, "examples/example1.ppm", 10);
-  //2 BMP
-  qr2.generate().paint(pic::Format::BMP, "examples/example2.bmp", 10);
-  qr3.generate().paint(pic::Format::BMP, "examples/example3.bmp", 10);
-  qr4.generate().paint(pic::Format::BMP, "examples/example4.bmp", 10);
+  //             func                                           output pic
+  // - paint(fmt, path, enlarge)         -> (QR dimension * enlarge) * (QR dimension * enlarge)
+  // - paint(fmt, path, width, height)   -> width * height
+  //1 PNG
+  qr1.generate().paint(pic::Format::PNG, "examples/example1.png", 10);
+  qr2.generate().paint(pic::Format::PNG, "examples/example2.png", 100);
+  //2 JPG
+  qr3.generate().paint(pic::Format::JPG, "examples/example3.jpg", 512, 512);
+  //3 TGA
+  qr4.generate().paint(pic::Format::TGA, "examples/example4.tga", 5);
+  //4 BMP
   qr5.generate().paint(pic::Format::BMP, "examples/example5.bmp", 10);
-  qr6.generate().paint(pic::Format::BMP, "examples/example6.bmp", 10);
+  qr6.generate().paint(pic::Format::BMP, "examples/example6.bmp", 1024, 1024);
   return 0;
 }
