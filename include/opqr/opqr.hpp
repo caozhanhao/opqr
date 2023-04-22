@@ -36,9 +36,9 @@
 //    for (int j = 0;j<s[i].size();++j)
 //    {
 //      if (s[j][i])
-//        std::cout << "\033[31mx\033[0m";
+//        std::cout << "\u001b[40m  \033[0m";
 //      else
-//        std::cout << "\033[32mx\033[0m";
+//        std::cout << "\u001b[47m  \033[0m";
 //    }
 //    std::cout << std::endl;
 //  }

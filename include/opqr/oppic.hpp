@@ -35,7 +35,7 @@ namespace opqr::pic
 {
   enum class Format
   {
-    JPG, PNG, TGA, BMP
+    JPG, PNG, TGA, BMP, ANSI256
   };
   
   class Pic
@@ -57,29 +57,80 @@ namespace opqr::pic
     
     void paint(Format fmt, const std::string &path, size_t width, size_t height) const
     {
+      if (fmt == Format::ANSI256)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unsupported format(ANSI256) when writing to file");
+      }
       size_t enlarge = (std::max(width, height) / data.size()) - 1;
       auto pic = load_pic(enlarge);
-      auto out = (unsigned char *) malloc(width * height * pic.channels * 1.5);
-      int ret = stbir_resize_uint8(pic.data, pic.width, pic.height, 0, out, width, height, 0, pic.channels);
+      auto out = (unsigned char *) malloc(
+          static_cast<size_t>(static_cast<double>(width * height * pic.channels) * 1.5));
+      int ret = stbir_resize_uint8(pic.data, pic.width, pic.height, 0,
+                                   out, static_cast<int>(width), static_cast<int>(height), 0, pic.channels);
       if (ret == 0)
       {
         throw error::Error(OPQR_ERROR_LOCATION, __func__, std::string("resize failed: ") + stbi_failure_reason());
       }
       stbi_image_free(pic.data);
       pic.data = out;
-      pic.width = width;
-      pic.height = height;
+      pic.width = static_cast<int>(width);
+      pic.height = static_cast<int>(height);
       write_pic(fmt, path, pic);
       stbi_image_free(out);
     }
-    
+  
     void paint(Format fmt, const std::string &path, size_t enlarge = 1) const
     {
+      if (enlarge == 0)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "enlarge must >= 1.");
+      }
+      if (fmt == Format::ANSI256)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unsupported format(ANSI256) when writing to path");
+      }
       auto pic = load_pic(enlarge);
       write_pic(fmt, path, pic);
       stbi_image_free(pic.data);
     }
   
+    void paint(Format fmt, std::ostream &os, size_t enlarge = 1) const
+    {
+      if (enlarge == 0)
+      {
+        throw error::Error(OPQR_ERROR_LOCATION, __func__, "enlarge must >= 1.");
+      }
+      switch (fmt)
+      {
+        case Format::ANSI256:
+          for (int i = static_cast<int>(data.size() - 1); i >= 0; --i)
+          {
+            for (int l = 0; l < enlarge; ++l)
+            {
+              for (int j = 0; j < data.size(); ++j)
+              {
+                for (int l = 0; l < enlarge; ++l)
+                {
+                  if (data[j][i])
+                  {
+                    os << "\033[48;5;16m  \033[0m";
+                  }
+                  else
+                  {
+                    os << "\033[48;5;231m  \033[0m";
+                  }
+                }
+              }
+              os << "\n";
+            }
+          }
+          break;
+        default:
+          throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unsupported format when writing to a stream");
+          break;
+      }
+    }
+
   private:
     void write_pic(Format fmt, const std::string &path, StbData data) const
     {

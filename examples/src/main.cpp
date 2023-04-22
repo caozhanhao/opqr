@@ -12,12 +12,12 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 #include "opqr/opqr.hpp"
+#include <iostream>
 
 using namespace opqr;
 
 int main()
 {
-  std::vector<QR> examples;
   /*
    *   Add Data
    */
@@ -57,15 +57,18 @@ int main()
   //             func                                           output pic
   // - paint(fmt, path, enlarge)         -> (QR dimension * enlarge) * (QR dimension * enlarge)
   // - paint(fmt, path, width, height)   -> width * height
-  //1 PNG
+  // 1 PNG
   qr1.generate().paint(pic::Format::PNG, "examples/example1.png", 10);
   qr2.generate().paint(pic::Format::PNG, "examples/example2.png", 100);
-  //2 JPG
-  qr3.generate().paint(pic::Format::JPG, "examples/example3.jpg", 512, 512);
-  //3 TGA
+  // 2 JPG
+  auto qr = qr3.generate();
+  qr.paint(pic::Format::JPG, "examples/example3.jpg", 512, 512);
+  // 3 TGA
   qr4.generate().paint(pic::Format::TGA, "examples/example4.tga", 5);
-  //4 BMP
+  // 4 BMP
   qr5.generate().paint(pic::Format::BMP, "examples/example5.bmp", 10);
   qr6.generate().paint(pic::Format::BMP, "examples/example6.bmp", 1024, 1024);
+  // 5 ANSI
+  qr.paint(pic::Format::ANSI256, std::cout, 2);
   return 0;
 }
