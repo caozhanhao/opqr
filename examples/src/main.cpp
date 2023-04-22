@@ -55,11 +55,13 @@ int main()
    *  Output
    */
   //             func                                           output pic
-  // - paint(fmt, path, enlarge)         -> (QR dimension * enlarge) * (QR dimension * enlarge)
-  // - paint(fmt, path, width, height)   -> width * height
+  // - paint(fmt, path/ostream, enlarge)         -> (QR dimension * enlarge) * (QR dimension * enlarge)
+  // - paint(fmt, path/ostream, width, height)   -> width * height
   // 1 PNG
   qr1.generate().paint(pic::Format::PNG, "examples/example1.png", 10);
-  qr2.generate().paint(pic::Format::PNG, "examples/example2.png", 100);
+  std::ofstream fs("examples/example2.png", std::ios::binary | std::ios::out);
+  qr2.generate().paint(pic::Format::PNG, fs, 100);
+  fs.close();
   // 2 JPG
   auto qr = qr3.generate();
   qr.paint(pic::Format::JPG, "examples/example3.jpg", 512, 512);

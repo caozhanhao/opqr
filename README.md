@@ -71,18 +71,22 @@ qr.disable_quiet_zone();
 - PNG
 - TGA
 - BMP
+- ANSI
 
-##### paint(format, filename, enlarge)
+##### paint(format, filename/ostream, enlarge)
 
 - the image size = dimension * enlarge x dimension * enlarge
 
-##### paint(format, filename, width, height)
+##### paint(format, filename/ostream, width, height)
 
 - the image size = width x height
 
 ```c++
-qr.generate().paint(pic::Format::BMP, "example.bmp", 10);
-qr.generate().paint(pic::Format::PNG, "example.bmp", 1024, 1024);
+auto pic = qr.generate();
+pic.paint(pic::Format::BMP, "example.bmp", 10);
+std::ofstream fs("examples/example2.png", std::ios::binary | std::ios::out);
+pic.paint(pic::Format::PNG, fs, 1024, 1024);
+fs.close();
 ```
 
 For more examples, see [here](examples/src/main.cpp)

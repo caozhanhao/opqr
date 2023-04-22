@@ -17,7 +17,9 @@
 #include "operror.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
-//#define STBI_ONLY_PNM
+#define STBI_ONLY_PNM
+#define STBI_ONLY_PNG
+
 #include "stb/stb_image.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -50,12 +52,26 @@ namespace opqr::pic
     };
   private:
     std::vector<std::vector<bool>> data;
-  
+
   public:
     Pic(std::vector<std::vector<bool>> data_)
         : data(std::move(data_)) {}
-    
+  
     void paint(Format fmt, const std::string &path, size_t width, size_t height) const
+    {
+      std::ofstream fs(path, std::ios::binary | std::ios::out);
+      paint(fmt, fs, width, height);
+      fs.close();
+    }
+  
+    void paint(Format fmt, const std::string &path, size_t enlarge) const
+    {
+      std::ofstream fs(path, std::ios::binary | std::ios::out);
+      paint(fmt, fs, enlarge);
+      fs.close();
+    }
+  
+    void paint(Format fmt, std::ostream &os, size_t width, size_t height) const
     {
       if (fmt == Format::ANSI256)
       {
@@ -75,23 +91,8 @@ namespace opqr::pic
       pic.data = out;
       pic.width = static_cast<int>(width);
       pic.height = static_cast<int>(height);
-      write_pic(fmt, path, pic);
+      write_pic(fmt, os, pic);
       stbi_image_free(out);
-    }
-  
-    void paint(Format fmt, const std::string &path, size_t enlarge = 1) const
-    {
-      if (enlarge == 0)
-      {
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "enlarge must >= 1.");
-      }
-      if (fmt == Format::ANSI256)
-      {
-        throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unsupported format(ANSI256) when writing to path");
-      }
-      auto pic = load_pic(enlarge);
-      write_pic(fmt, path, pic);
-      stbi_image_free(pic.data);
     }
   
     void paint(Format fmt, std::ostream &os, size_t enlarge = 1) const
@@ -126,28 +127,37 @@ namespace opqr::pic
           }
           break;
         default:
-          throw error::Error(OPQR_ERROR_LOCATION, __func__, "Unsupported format when writing to a stream");
+        {
+          auto pic = load_pic(enlarge);
+          write_pic(fmt, os, pic);
+          stbi_image_free(pic.data);
+        }
           break;
       }
     }
 
   private:
-    void write_pic(Format fmt, const std::string &path, StbData data) const
+    void write_pic(Format fmt, std::ostream &os, StbData data) const
     {
       int ret = 0;
+      auto func = [](void *context, void *data, int size)
+      {
+        auto osptr = reinterpret_cast<std::ostream *>(context);
+        osptr->write(reinterpret_cast<char *>(data), size);
+      };
       switch (fmt)
       {
         case Format::JPG:
-          ret = stbi_write_jpg(path.c_str(), data.width, data.height, data.channels, data.data, 100);
+          ret = stbi_write_jpg_to_func(func, &os, data.width, data.height, data.channels, data.data, 100);
           break;
         case Format::PNG:
-          ret = stbi_write_png(path.c_str(), data.width, data.height, data.channels, data.data, 0);
+          ret = stbi_write_png_to_func(func, &os, data.width, data.height, data.channels, data.data, 0);
           break;
         case Format::TGA:
-          ret = stbi_write_tga(path.c_str(), data.width, data.height, data.channels, data.data);
+          ret = stbi_write_tga_to_func(func, &os, data.width, data.height, data.channels, data.data);
           break;
         case Format::BMP:
-          ret = stbi_write_bmp(path.c_str(), data.width, data.height, data.channels, data.data);
+          ret = stbi_write_bmp_to_func(func, &os, data.width, data.height, data.channels, data.data);
           break;
       }
       if (ret == 0)
